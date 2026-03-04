@@ -1,0 +1,1002 @@
+[
+  {
+    "id": "e001",
+    "rank": "E",
+    "week": 1,
+    "category": "Bias-Variance",
+    "question": "You train a polynomial regression model of degree 15 on 50 data points and achieve 99% training accuracy but 55% test accuracy. You then collect 10,000 more training points and retrain the same model. What is the MOST likely outcome?",
+    "choices": [
+      "A) Test accuracy improves substantially because more data reduces variance",
+      "B) Test accuracy improves only marginally because the model's high degree means it will always overfit regardless of data size",
+      "C) Test accuracy decreases because the model now underfits the larger dataset"
+    ],
+    "correct": 0,
+    "explanation": {
+      "correct": "A degree-15 polynomial has high variance, which is the primary cause of the train-test gap. More training data is the canonical remedy for high variance: it constrains the model's flexibility by providing more points that must be fit simultaneously, effectively reducing variance. With 10,000 points, even a degree-15 polynomial cannot wildly oscillate between all of them, so generalization improves substantially.",
+      "wrong": [
+        "While degree 15 is high, the claim that it 'will always overfit regardless of data size' is false. Overfitting is a function of model complexity RELATIVE to data size. A degree-15 polynomial has only 16 parameters; with 10,000 data points, the ratio of parameters to data is tiny (0.0016), making severe overfitting unlikely.",
+        "Underfitting occurs when a model lacks capacity to capture the true pattern. A degree-15 polynomial has MORE than enough capacity for most real-world relationships; adding data does not reduce model capacity. The model would only underfit if the true relationship required even higher-degree terms, which is exceedingly rare."
+      ]
+    }
+  },
+  {
+    "id": "e002",
+    "rank": "E",
+    "week": 1,
+    "category": "Overfitting",
+    "question": "A model achieves 0.95 AUC on the training set and 0.93 AUC on a held-out test set. A colleague says the model is overfitting and you should add regularization. What is the best response?",
+    "choices": [
+      "A) Disagree, because a 0.02 AUC gap is small and adding regularization would likely decrease both training and test performance, yielding a net worse model",
+      "B) Agree, because training performance exceeds test performance, which is the definition of overfitting",
+      "C) Agree, but suggest using early stopping instead of regularization since it is always superior"
+    ],
+    "correct": 0,
+    "explanation": {
+      "correct": "A small train-test gap (0.02 AUC) indicates minimal overfitting. Some gap is expected and healthy in virtually all models. Adding regularization penalizes model complexity, which would reduce training performance and, since the model is not substantially overfitting, would also reduce test performance. The model is already generalizing well.",
+      "wrong": [
+        "While it is true that training > test performance indicates some degree of overfitting, almost every model exhibits this. The DEFINITION of problematic overfitting requires a LARGE gap. A 0.02 gap on AUC is negligible and does not warrant intervention. Calling any train-test gap 'overfitting' and adding regularization is a common beginner mistake that leads to unnecessarily underpowered models.",
+        "Early stopping is not 'always superior' to explicit regularization. Early stopping is an implicit regularizer that works well for iterative methods (neural networks, boosting), but its effectiveness depends on the training dynamics. For some models and datasets, L2 regularization or dropout can outperform early stopping. The blanket claim of superiority is false, and regardless, the model does not need more regularization."
+      ]
+    }
+  },
+  {
+    "id": "e003",
+    "rank": "E",
+    "week": 1,
+    "category": "Evaluation Metrics",
+    "question": "You are building a disease screening model where the disease prevalence is 1%. Your model predicts 'no disease' for every patient and achieves 99% accuracy. Your manager asks you to report F1 score instead. What happens?",
+    "choices": [
+      "A) F1 score is 0.00 because the model has zero recall and F1 is the harmonic mean of precision and recall",
+      "B) F1 score is 0.99 because accuracy and F1 are approximately equal when one class dominates",
+      "C) F1 score is undefined because precision is 0/0 when there are no positive predictions"
+    ],
+    "correct": 0,
+    "explanation": {
+      "correct": "The model never predicts positive, so True Positives = 0 and False Negatives = all actual positives. Recall = TP/(TP+FN) = 0/N = 0. Precision is technically 0/0 (undefined), but by convention in sklearn and most implementations, when TP=0, precision is set to 0 and F1 = 2*(0*0)/(0+0) is defined as 0. The F1 score correctly identifies this as a useless classifier despite the misleading 99% accuracy.",
+      "wrong": [
+        "Accuracy and F1 diverge dramatically under class imbalance. Accuracy rewards correct predictions on the majority class, while F1 focuses on the positive (minority) class. A model predicting all negatives gets 99% accuracy but 0% F1. This is precisely why F1 is preferred for imbalanced problems.",
+        "While precision is technically 0/0 when there are no positive predictions, standard implementations define F1 as 0 in this case rather than leaving it undefined. The practical answer is F1=0. If a library truly returned undefined/NaN, it would still not be a useful answer to report -- the convention exists to handle this gracefully."
+      ]
+    }
+  },
+  {
+    "id": "e004",
+    "rank": "E",
+    "week": 1,
+    "category": "Linear Models",
+    "question": "You fit ordinary least squares (OLS) linear regression to a dataset where the true relationship is y = 3x + noise. You notice that your learned coefficient for x is 2.1 instead of 3. A colleague suggests the model is biased. Under which condition is the colleague CORRECT?",
+    "choices": [
+      "A) The noise is heteroscedastic (variance of noise depends on x)",
+      "B) The feature x is correlated with an omitted variable that also affects y",
+      "C) The dataset is small (n=20) and this is just sampling variance"
+    ],
+    "correct": 1,
+    "explanation": {
+      "correct": "Omitted variable bias is a genuine source of BIAS in OLS estimates. If x is correlated with an omitted variable z that affects y (i.e., y = 3x + 2z + noise, and z is omitted), then OLS attributes some of z's effect to x, systematically shifting the coefficient away from 3. This is true bias -- it does not disappear with more data.",
+      "wrong": [
+        "Heteroscedasticity violates the constant-variance assumption of OLS but does NOT bias the coefficient estimates. OLS remains unbiased under heteroscedasticity; it only affects the efficiency (variance) of the estimates and makes standard errors unreliable. The Gauss-Markov theorem's 'BLUE' property is lost, but unbiasedness is retained.",
+        "With n=20, the coefficient estimate has high VARIANCE, meaning 2.1 vs 3.0 could be due to random sampling fluctuation. But this is variance, not bias. If you repeated the experiment many times, the average estimate would converge to 3.0 (assuming no omitted variables). The colleague said 'biased,' not 'high variance,' so this is a bias-variance distinction trap."
+      ]
+    }
+  },
+  {
+    "id": "e005",
+    "rank": "E",
+    "week": 1,
+    "category": "Evaluation Metrics",
+    "question": "You plot an ROC curve for your binary classifier and compute AUC = 0.50. A colleague says the model is equivalent to random guessing. Under what condition is the colleague WRONG?",
+    "choices": [
+      "A) The colleague is always correct; AUC = 0.50 always means random guessing",
+      "B) If the model has learned a perfectly INVERSE signal (predicting high probability for negatives and low for positives), calibration is inverted but the model contains useful information",
+      "C) If the test set is very small, AUC = 0.50 could occur by chance even for a good model"
+    ],
+    "correct": 1,
+    "explanation": {
+      "correct": "AUC = 0.50 means the model's ranking is no better than random. However, a model that perfectly inverts the labels would also get AUC = 0.50 if you naively compute it, yet it actually contains PERFECT discriminative information -- you just need to flip the predictions. In practice, AUC can be exactly 0.50 if predictions are constant (truly no information) or near 0.50 due to label inversion in a small but informative model. A model with AUC < 0.50 is actually better than random -- just flip it. AUC = 0.50 is the knife-edge case where the model might have learned an inverted signal that averages out.",
+      "wrong": [
+        "This is incorrect. AUC = 0.50 does not ALWAYS mean random guessing. It means the model's positive-class scores and negative-class scores have equal rank distributions. This can happen with a constant predictor (truly no information) or with a model whose signal is systematically inverted. The distinction matters in debugging.",
+        "While small test sets do introduce variance in AUC estimates, the question asks when the colleague's interpretation is WRONG, not when it might be wrong by chance. The more precise and insightful answer is the label-inversion case, which represents a systematic (not stochastic) reason AUC = 0.50 does not mean 'no information.'"
+      ]
+    }
+  },
+  {
+    "id": "e006",
+    "rank": "E",
+    "week": 2,
+    "category": "Bias-Variance",
+    "question": "Consider the decomposition: Expected Test Error = Bias^2 + Variance + Irreducible Noise. You ensemble 100 independently trained decision trees (no bagging, each trained on the SAME full dataset). How does this affect each component compared to a single tree?",
+    "choices": [
+      "A) Variance decreases, Bias stays the same, Noise stays the same",
+      "B) All three components stay the same because the trees are trained on identical data and will produce identical predictions",
+      "C) Variance decreases and Bias increases because averaging smooths out the predictions"
+    ],
+    "correct": 1,
+    "explanation": {
+      "correct": "This is a critical trap. If you train 100 decision trees on the SAME dataset with the SAME algorithm (no randomness in splits, no random subsampling of features), they will all be IDENTICAL. Averaging identical predictions changes nothing. Ensembling only reduces variance when the individual models are DIVERSE -- which requires different training sets (bagging), random feature subsets (random forests), or other sources of randomness.",
+      "wrong": [
+        "This would be correct for bagging (bootstrap aggregating), where each tree is trained on a different bootstrap sample, producing diverse trees. But the question specifies the SAME full dataset with no bagging. Without diversity, there is no variance reduction. This is why Random Forests add both bootstrap sampling AND random feature subsets -- to ensure diversity.",
+        "Averaging does smooth predictions, but only if there is variation to smooth. Identical trees produce identical predictions, so averaging them yields the same prediction. There is no increase in bias from averaging identical values."
+      ]
+    }
+  },
+  {
+    "id": "e007",
+    "rank": "E",
+    "week": 2,
+    "category": "Overfitting",
+    "question": "You train a neural network and observe that validation loss INCREASES for the first 5 epochs, then DECREASES steadily for 50 epochs, then increases again. If you use early stopping with patience=3 monitoring validation loss, what happens?",
+    "choices": [
+      "A) Training stops at epoch 8 because validation loss increased for the first 5 epochs, triggering early stopping before the model reaches its best performance",
+      "B) Training stops around epoch 55, correctly finding the global minimum of validation loss",
+      "C) Training continues for all epochs because early stopping resets its counter whenever validation loss reaches a new minimum"
+    ],
+    "correct": 0,
+    "explanation": {
+      "correct": "Standard early stopping monitors validation loss and counts consecutive epochs without improvement. If validation loss increases for the first 5 epochs, the patience counter of 3 is exceeded by epoch 3-4 (depending on implementation), and training stops well before the model discovers the later valley. This is a real pitfall: early stopping with low patience can terminate training during an initial 'warm-up' phase where the model has not yet found a good region of parameter space. The fix is to use higher patience, learning rate warm-up, or start monitoring after a minimum number of epochs.",
+      "wrong": [
+        "This would be the ideal outcome, but standard early stopping has no concept of 'global minimum' -- it only tracks recent improvement. With patience=3 and validation loss increasing from the start, training terminates long before epoch 55.",
+        "Early stopping does reset its patience counter on new minima, but the issue is that the first 5 epochs show INCREASING loss, so no new minimum is ever set during that period. The counter hits 3 before any improvement occurs. The patience mechanism only helps when there are intermittent dips; it cannot survive a prolonged initial degradation."
+      ]
+    }
+  },
+  {
+    "id": "e008",
+    "rank": "E",
+    "week": 2,
+    "category": "Linear Models",
+    "question": "You apply logistic regression to a dataset where the two classes are perfectly linearly separable. Training converges and gives you 100% training accuracy. What is the problem?",
+    "choices": [
+      "A) There is no problem; perfect separability means logistic regression has found the optimal decision boundary",
+      "B) The weight magnitudes diverge to infinity because the logistic loss can always be reduced further by pushing the decision boundary's margin wider, leading to an ill-defined solution",
+      "C) Logistic regression cannot achieve 100% training accuracy because the sigmoid function asymptotically approaches but never reaches 0 or 1"
+    ],
+    "correct": 1,
+    "explanation": {
+      "correct": "When data is perfectly separable, logistic regression's MLE does not have a finite solution. The log-loss for a correctly classified point is -log(sigmoid(y * w^T x)), which decreases as w^T x increases. With perfect separation, the optimizer can always increase ||w|| to push predictions closer to 0 or 1, reducing loss further. The weights grow without bound, the predicted probabilities collapse to 0/1, and the solution is not unique. This is called 'complete separation' and makes the model brittle with unreliable probability estimates. Regularization fixes this by penalizing large weights.",
+      "wrong": [
+        "Perfect separability is actually a PROBLEM, not a feature. The decision boundary is not unique -- any hyperplane that separates the classes works -- and the MLE tries to find the one with maximum margin by sending weights to infinity. The resulting model has terrible calibration (all probabilities near 0 or 1) and is numerically unstable.",
+        "While it is true that the sigmoid never exactly reaches 0 or 1, 'accuracy' only requires that the predicted class (threshold at 0.5) matches the true class. A sigmoid output of 0.9999 is classified as 1, which counts as correct. So 100% training accuracy IS achievable even with sigmoid outputs strictly between 0 and 1. The issue is what happens to the weights, not the accuracy metric."
+      ]
+    }
+  },
+  {
+    "id": "e009",
+    "rank": "E",
+    "week": 2,
+    "category": "Evaluation Metrics",
+    "question": "You compute a confusion matrix and find: TP=90, FP=10, FN=30, TN=870. Your precision is 90% and recall is 75%. You want to improve recall to 90% while keeping precision above 80%. A colleague suggests lowering the classification threshold. Is this guaranteed to work?",
+    "choices": [
+      "A) Yes, lowering the threshold always improves recall at the cost of precision, and the specific tradeoff requested (90% recall, 80%+ precision) is achievable by finding the right threshold",
+      "B) Lowering the threshold improves precision and decreases recall, so this is the wrong direction",
+      "C) Lowering the threshold will improve recall, but there is no guarantee that precision stays above 80% when recall reaches 90%; the achievable tradeoff depends on the model's score distribution"
+    ],
+    "correct": 2,
+    "explanation": {
+      "correct": "Lowering the threshold does increase recall (more positives are captured) and generally decreases precision (more false positives). However, whether you can achieve the specific combination of 90% recall AND 80%+ precision depends entirely on the model's predicted probability distribution. If the model's scores for true positives and false positives overlap heavily in the 0.3-0.5 range, lowering the threshold to capture more true positives will also admit many false positives, potentially dropping precision below 80%. The precision-recall curve is model-specific and cannot be controlled by threshold alone.",
+      "wrong": [
+        "While the direction is correct (lower threshold increases recall, generally decreases precision), the word 'guaranteed' makes this wrong. The specific tradeoff is NOT always achievable. Consider an extreme case: if the model assigns nearly identical scores to many true and false positives, there is no threshold that gives high recall without tanking precision. The PR curve might show that at 90% recall, precision is only 60%.",
+        "This is backwards. Lowering the threshold means more examples are classified as positive. More true positives are captured (recall increases) but more false positives also appear (precision generally decreases). The confusion between threshold direction and metric direction is a common error."
+      ]
+    }
+  },
+  {
+    "id": "d001",
+    "rank": "D",
+    "week": 2,
+    "category": "Regularization",
+    "question": "You train a linear regression model with L1 regularization (Lasso) at a very high regularization strength. All coefficients are driven to zero except one. You then switch to L2 regularization (Ridge) at the same regularization strength. What happens?",
+    "choices": [
+      "A) Ridge also selects a single feature but potentially a different one than Lasso chose",
+      "B) Ridge drives all coefficients to exactly zero because the regularization strength is the same",
+      "C) Ridge keeps all features with small but non-zero coefficients, distributing weight more evenly across correlated features"
+    ],
+    "correct": 2,
+    "explanation": {
+      "correct": "L1 and L2 regularization have fundamentally different geometry. L1's diamond-shaped constraint region has corners on the axes, which is why solutions tend to land at corners (sparse, with many exact zeros). L2's circular constraint region has no corners, so the constrained optimum almost never lands exactly on an axis. Ridge shrinks all coefficients toward zero but keeps them non-zero. With correlated features, Lasso arbitrarily picks one and zeros the rest, while Ridge distributes weight among all correlated features roughly proportionally.",
+      "wrong": [
+        "Ridge does NOT perform feature selection. The L2 penalty shrinks coefficients but never drives them to exactly zero (geometrically, the circular constraint meets the elliptical contours of the loss at a point that is almost never on an axis). This is the fundamental difference between L1 and L2 regularization.",
+        "Even at high regularization strength, L2 does not produce exact zeros (except in degenerate cases). The L2 gradient at w=0 is zero, meaning there is no 'push' toward exactly zero, only a pull proportional to the current weight. This is in contrast to L1, where the subgradient at w=0 is non-zero, enabling exact sparsity."
+      ]
+    }
+  },
+  {
+    "id": "d002",
+    "rank": "D",
+    "week": 2,
+    "category": "Gradient Descent",
+    "question": "You are training a model with SGD using a learning rate of 0.1. You switch from a batch size of 32 to a batch size of 256. You keep the learning rate at 0.1. What is the most likely effect?",
+    "choices": [
+      "A) Training converges faster in wall-clock time due to better hardware utilization, and final performance is similar",
+      "B) The effective learning rate is now too small relative to the batch size, leading to slower convergence and potentially a sharper (less generalizable) minimum",
+      "C) The larger batch provides more accurate gradients, so the model converges to a better minimum with lower test error"
+    ],
+    "correct": 1,
+    "explanation": {
+      "correct": "The linear scaling rule (from Goyal et al., 2017) states that when you multiply the batch size by k, you should also multiply the learning rate by k to maintain the same effective update magnitude per epoch. Going from batch 32 to 256 is an 8x increase; keeping the learning rate the same means the effective learning rate per epoch is 8x smaller. This leads to slower convergence. Additionally, large-batch training with insufficiently large learning rates tends to converge to sharp minima that generalize worse (Keskar et al., 2017). The fix is to scale the learning rate to 0.8 (or use gradual warm-up).",
+      "wrong": [
+        "While larger batches DO utilize hardware (especially GPUs) better, the claim about 'similar final performance' ignores the learning rate interaction. Without adjusting the learning rate, the optimization dynamics fundamentally change. Faster wall-clock time per step does not compensate for needing many more steps to converge, and the final minimum may be worse.",
+        "More accurate gradients are a double-edged sword. While the gradient estimate has lower variance, this is NOT always beneficial. The noise in small-batch SGD acts as implicit regularization, helping the optimizer escape sharp minima and find flatter, more generalizable regions. 'Cleaner' gradients can actually lead to WORSE generalization -- this is the large-batch training paradox."
+      ]
+    }
+  },
+  {
+    "id": "d003",
+    "rank": "D",
+    "week": 3,
+    "category": "SVMs",
+    "question": "You train a soft-margin SVM with RBF kernel on a binary classification task. You increase the gamma parameter of the RBF kernel from 0.01 to 100. What happens to the decision boundary?",
+    "choices": [
+      "A) The decision boundary becomes smoother and more linear because high gamma makes the kernel behave like a linear kernel",
+      "B) Each training point gets its own tight 'bubble' of influence, the decision boundary becomes extremely complex, and the model severely overfits",
+      "C) The model becomes equivalent to k-nearest neighbors with k=1 and achieves perfect training accuracy regardless of the data"
+    ],
+    "correct": 1,
+    "explanation": {
+      "correct": "The RBF kernel is K(x,y) = exp(-gamma * ||x-y||^2). When gamma is very large, the exponential decays extremely quickly with distance, meaning each training point only influences predictions in its immediate vicinity. The decision boundary wraps tightly around individual training points, creating an extremely complex, overfitting boundary. Training accuracy approaches 100% but test accuracy degrades severely. This is the RBF kernel's version of overfitting.",
+      "wrong": [
+        "This is exactly backwards. LOW gamma makes the RBF kernel smoother and more linear (because the Gaussian is very broad, making all points look similar). HIGH gamma makes it more complex and local. The relationship is: gamma up -> complexity up -> overfitting risk up.",
+        "While the behavior is SIMILAR to 1-NN (highly local decisions), an SVM with high gamma is not literally equivalent to 1-NN. The SVM still optimizes a margin-based objective and uses the C parameter for regularization. Also, the SVM does not necessarily achieve perfect training accuracy -- the soft-margin parameter C controls how many misclassifications are allowed. With high gamma AND high C, you approach 1-NN-like behavior, but the question only specifies high gamma."
+      ]
+    }
+  },
+  {
+    "id": "d004",
+    "rank": "D",
+    "week": 3,
+    "category": "Decision Trees",
+    "question": "You build a gradient boosted tree ensemble with 1000 trees, max_depth=1 (stumps), and learning_rate=0.01. Your colleague builds one with 10 trees, max_depth=15, and learning_rate=1.0. Both use the same data. Which statement is MOST accurate?",
+    "choices": [
+      "A) Your model is essentially performing additive linear modeling since stumps can only split on one feature, so it cannot capture interactions between features",
+      "B) Both models will perform similarly because the total model complexity (num_trees * max_depth * learning_rate) is roughly equivalent",
+      "C) Your colleague's model will likely overfit severely because deep trees with high learning rate and few boosting rounds is a recipe for memorizing the training data"
+    ],
+    "correct": 2,
+    "explanation": {
+      "correct": "10 trees of depth 15 means each tree has up to 2^15 = 32,768 leaf nodes, capable of memorizing large portions of the dataset. With learning_rate=1.0, each tree's predictions are added at full weight, so errors from overfitting are not dampened. The model has massive capacity concentrated in few, complex trees -- a known recipe for overfitting in boosting. The standard practice is many simple trees with small learning rates.",
+      "wrong": [
+        "While individual stumps can only split on one feature, BOOSTED stumps can capture interactions. Each subsequent stump is fit to the residuals of the previous ensemble, so a stump splitting on feature A followed by a stump splitting on feature B effectively models an A-B interaction through the residual structure. With 1000 stumps, complex interactions can emerge additively. This is a common misconception about boosted stumps.",
+        "There is no meaningful 'total complexity equivalence' formula like num_trees * max_depth * learning_rate. The overfitting dynamics are highly non-linear. Many shallow trees with small learning rates is fundamentally different from few deep trees with large learning rates, even if some product of parameters is similar. The former benefits from the regularizing effect of slow, incremental learning; the latter does not."
+      ]
+    }
+  },
+  {
+    "id": "d005",
+    "rank": "D",
+    "week": 3,
+    "category": "Cross-Validation",
+    "question": "You perform 5-fold cross-validation for hyperparameter tuning, selecting the hyperparameters that give the best average CV score. You then report this best CV score as your model's expected performance. What is wrong with this approach?",
+    "choices": [
+      "A) Nothing is wrong; this is the standard and correct way to estimate model performance",
+      "B) 5-fold CV is insufficient; you need at least 10-fold CV for an unbiased estimate",
+      "C) The best CV score is an optimistically biased estimate of true performance because you selected the hyperparameters that happened to score best, which includes some luck/overfitting to the validation folds"
+    ],
+    "correct": 2,
+    "explanation": {
+      "correct": "When you search over many hyperparameter configurations and report the BEST CV score, you are performing a form of selection bias (sometimes called 'optimization bias' or 'overfitting to the validation set'). Among many configurations, some will score well partly due to chance alignment with the validation folds. The selected best score therefore overestimates true performance. The correct approach is nested cross-validation: an inner loop for hyperparameter selection and an outer loop for unbiased performance estimation. Alternatively, hold out a final test set that is never used during tuning.",
+      "wrong": [
+        "This is a common but incorrect practice. Using the best CV score from hyperparameter tuning as the performance estimate conflates model selection with model evaluation. The CV score is a valid estimate of performance for a FIXED set of hyperparameters, but not when it is the MAXIMUM across many configurations.",
+        "While 10-fold CV generally has lower variance than 5-fold CV, the number of folds does not address the fundamental problem of selection bias from hyperparameter optimization. Even with 100-fold CV, reporting the best score across a hyperparameter search is still optimistically biased. The issue is the selection process, not the number of folds."
+      ]
+    }
+  },
+  {
+    "id": "d006",
+    "rank": "D",
+    "week": 3,
+    "category": "Regularization",
+    "question": "You train a neural network with dropout rate p=0.5 during training. At test time, you accidentally leave dropout ON. What happens to your model's predictions?",
+    "choices": [
+      "A) Predictions become stochastic (different each forward pass) and on average are correctly scaled, so averaging multiple passes gives the correct answer",
+      "B) Predictions become stochastic and are systematically WRONG in magnitude because the test-time scaling correction is not applied, making averages also incorrect",
+      "C) Predictions become stochastic and are correctly scaled on average, but the variance introduces noise that degrades individual predictions compared to properly disabled dropout"
+    ],
+    "correct": 2,
+    "explanation": {
+      "correct": "With standard dropout (inverted dropout, which is the default in PyTorch and TensorFlow), the activations are scaled by 1/(1-p) during training so that the expected value of each neuron's output is the same at train and test time. If you leave dropout ON at test time with inverted dropout, each forward pass randomly zeros neurons and scales the remaining ones by 1/(1-p). The EXPECTED VALUE of each activation is correct (because the scaling was designed for this), but individual forward passes have high variance. This is actually the basis of Monte Carlo Dropout (Gal & Ghahramani, 2016). However, single predictions are noisier than with dropout properly disabled.",
+      "wrong": [
+        "The first part is correct (stochastic, correctly scaled on average), but it misses the key practical issue: while averaging many MC Dropout passes converges to the correct answer, INDIVIDUAL predictions suffer from unnecessary variance. For most deployment scenarios where you make a single forward pass, leaving dropout on degrades performance. The question asks what 'happens,' and degraded individual predictions is the most important practical consequence.",
+        "With inverted dropout (the modern standard), the scaling IS applied during training, so the expected values ARE correct even with dropout on at test time. This answer would be correct for 'traditional' dropout (without inverted scaling), where you must multiply by (1-p) at test time. But modern frameworks use inverted dropout by default, making the expected outputs correctly scaled."
+      ]
+    }
+  },
+  {
+    "id": "d007",
+    "rank": "D",
+    "week": 3,
+    "category": "Gradient Descent",
+    "question": "You are using Adam optimizer with default hyperparameters (beta1=0.9, beta2=0.999, epsilon=1e-8). Your loss plateaus and you suspect you are stuck in a saddle point. Which property of Adam helps escape saddle points compared to vanilla SGD?",
+    "choices": [
+      "A) Adam's momentum term accumulates velocity that can carry the optimizer through flat regions where gradients are near zero",
+      "B) Adam adds noise to the gradients, allowing stochastic escape from saddle points",
+      "C) Adam's per-parameter adaptive learning rate DIVIDES by the square root of the second moment, which AMPLIFIES the effective learning rate for parameters with consistently small gradients (directions away from the saddle)"
+    ],
+    "correct": 2,
+    "explanation": {
+      "correct": "At a saddle point, some directions have very small gradients (the flat directions along the saddle). Adam's adaptive learning rate divides the gradient by sqrt(v_t + epsilon), where v_t is the exponential moving average of squared gradients. For parameters with consistently small gradients, v_t is small, so the effective learning rate 1/sqrt(v_t) is LARGE. This amplifies movement in low-gradient directions, helping escape the saddle. This is the key advantage of adaptive methods at saddle points.",
+      "wrong": [
+        "While momentum does help traverse flat regions by accumulating velocity, vanilla SGD with momentum also has this property. Momentum is NOT unique to Adam and is not the primary mechanism that gives Adam an advantage over SGD+momentum at saddle points. The adaptive per-parameter learning rate is what distinguishes Adam's saddle-point behavior.",
+        "Adam does NOT add noise to gradients. The stochasticity in SGD and Adam comes from mini-batch sampling, which is identical for both. Adam's bias correction and adaptive rates are deterministic transformations of the gradient estimates. Stochastic noise from mini-batches does help escape saddle points, but this is a property of SGD in general, not specific to Adam."
+      ]
+    }
+  },
+  {
+    "id": "d008",
+    "rank": "D",
+    "week": 3,
+    "category": "SVMs",
+    "question": "You have a dataset with 10,000 features and 100 samples. You want to use an SVM. A colleague recommends using a linear kernel rather than an RBF kernel. Is this good advice?",
+    "choices": [
+      "A) No, RBF is always better because it can learn non-linear decision boundaries that linear kernels cannot",
+      "B) Yes, because in very high-dimensional spaces (features >> samples), data is often linearly separable and a linear kernel is less prone to overfitting, faster to train, and has fewer hyperparameters",
+      "C) It does not matter; the kernel trick means both kernels operate in the same effective space"
+    ],
+    "correct": 1,
+    "explanation": {
+      "correct": "When dimensionality far exceeds the number of samples (p >> n), the data is almost certainly linearly separable in the original feature space (Cover's theorem). Adding a non-linear kernel like RBF projects into an even higher-dimensional space, increasing the risk of overfitting without benefit. A linear kernel is simpler (no gamma to tune), faster (can use optimized solvers like LIBLINEAR), and less likely to overfit. This is standard advice in bioinformatics and text classification where p >> n is common.",
+      "wrong": [
+        "The ability to learn non-linear boundaries is not always beneficial. In high-dimensional spaces, the data manifold is complex enough that linear boundaries suffice. Adding non-linear capacity when data is scarce (only 100 samples) increases overfitting risk without meaningful benefit. 'More flexible is always better' is a common misconception.",
+        "The kernel trick maps data into different feature spaces depending on the kernel. A linear kernel operates in the original feature space, while an RBF kernel maps to an infinite-dimensional RKHS. These are fundamentally different spaces, and the choice of kernel significantly affects both the decision boundary and generalization. They absolutely do not operate in the 'same effective space.'"
+      ]
+    }
+  },
+  {
+    "id": "d009",
+    "rank": "D",
+    "week": 3,
+    "category": "Cross-Validation",
+    "question": "You have a time-series dataset with 5 years of daily data. You apply standard 5-fold cross-validation (randomly shuffled) to evaluate your forecasting model. Your CV score is excellent (RMSE = 0.5), but deployment performance is poor (RMSE = 2.3). What went wrong?",
+    "choices": [
+      "A) The model overfit to the training data due to insufficient regularization",
+      "B) 5-fold CV has too few folds for time-series data; you need leave-one-out CV",
+      "C) Random shuffling broke the temporal ordering, allowing the model to 'peek' at future data during training, making the CV estimate unrealistically optimistic due to data leakage"
+    ],
+    "correct": 2,
+    "explanation": {
+      "correct": "In standard k-fold CV with random shuffling, each fold's training set contains data from BOTH before and after the validation period. For time-series, this means the model trains on future data to predict past data, which is data leakage. In deployment, the model only has past data. The correct approach is time-series cross-validation (walk-forward validation), where the training set always precedes the validation set chronologically. The gap between CV (0.5) and deployment (2.3) is classic temporal leakage.",
+      "wrong": [
+        "While insufficient regularization can cause overfitting, it would show up as a large gap between TRAINING error and CV error, not between CV error and deployment error. The CV error itself would be a reasonable estimate of deployment error if done correctly. The fact that CV looks great but deployment is poor specifically implicates a flawed CV methodology, not a modeling issue.",
+        "Leave-one-out CV would make the problem WORSE, not better, because each training fold would contain nearly all the data including future observations. The number of folds is irrelevant; the issue is the STRUCTURE of the folds. Time-series requires walk-forward (expanding window or sliding window) validation, regardless of how many folds are used."
+      ]
+    }
+  },
+  {
+    "id": "c001",
+    "rank": "C",
+    "week": 3,
+    "category": "CNNs",
+    "question": "You have a CNN with a convolutional layer: input 32x32x3, 64 filters of size 3x3, stride 1, 'same' padding. How many trainable parameters does this layer have?",
+    "choices": [
+      "A) 1,792 (3 * 3 * 3 * 64 + 64 bias terms)",
+      "B) 1,728 (3 * 3 * 3 * 64 without bias terms)",
+      "C) 576 (3 * 3 * 64 -- the input channels are shared, not separate per filter)"
+    ],
+    "correct": 0,
+    "explanation": {
+      "correct": "Each filter has spatial dimensions 3x3 and must span all 3 input channels, giving 3*3*3 = 27 weights per filter. With 64 filters, that is 27*64 = 1,728 weights. Adding one bias term per filter gives 1,728 + 64 = 1,792 total parameters. Note that the spatial dimensions of the INPUT (32x32) do NOT affect the parameter count -- this is the key weight-sharing property of convolutions. The same 1,792 parameters are applied at every spatial position.",
+      "wrong": [
+        "This count (1,728) is the weight-only count WITHOUT biases. While some architectures (especially those using BatchNorm immediately after convolution) omit the bias, the standard convolutional layer includes a bias per filter. The question does not mention BatchNorm or bias=False, so the default (with bias) applies.",
+        "This incorrectly assumes filters do not span input channels. Each filter MUST span all input channels; you cannot split them. A 3x3 filter on 3-channel input is actually a 3x3x3 tensor, not a 3x3 matrix. Misunderstanding the depth dimension of convolutional filters is an extremely common error."
+      ]
+    }
+  },
+  {
+    "id": "c002",
+    "rank": "C",
+    "week": 4,
+    "category": "RNNs/LSTMs",
+    "question": "You are training a vanilla RNN on sequences of length 200. The gradient of the loss with respect to the hidden state at time step 1 involves multiplying the recurrent weight matrix W_hh approximately 199 times. If the largest singular value of W_hh is 1.05, what happens during backpropagation?",
+    "choices": [
+      "A) Gradients remain stable because 1.05 is close to 1",
+      "B) Gradients vanish because the tanh activation function squashes them regardless of the weight matrix",
+      "C) Gradients EXPLODE because 1.05^199 is approximately 17,292 -- even slightly above 1 causes exponential growth over long sequences"
+    ],
+    "correct": 2,
+    "explanation": {
+      "correct": "The gradient through a vanilla RNN involves products of the form (W_hh^T * diag(tanh'(h_t))) repeated across time steps. Even ignoring the tanh derivative (which is at most 1), the repeated multiplication by W_hh means a largest singular value of 1.05 leads to gradient magnitudes scaling as ~1.05^199 = approximately 17,292. This is severe gradient explosion. The boundary between vanishing and exploding is a largest singular value of exactly 1. Even 1.05 -- seemingly 'close to 1' -- causes catastrophic explosion over long sequences. This is why gradient clipping is essential for RNNs.",
+      "wrong": [
+        "'Close to 1' is irrelevant when exponentiated 199 times. 1.05^199 = e^(199 * ln(1.05)) = e^(199 * 0.0488) = e^9.71 = 16,500+. This exponential amplification is precisely why RNNs struggle with long sequences: even tiny deviations from singular value = 1 are amplified enormously. The intuition that '1.05 is close to 1' is misleading in this context.",
+        "While tanh' is bounded in [0,1] and DOES contribute to vanishing gradients, when the singular values of W_hh are sufficiently large (>1), the matrix multiplication dominates and OVERWHELMS the tanh squashing. The gradient product at each step is (W_hh^T * diag(tanh')), and if ||W_hh|| > 1/max(tanh'), the net effect is amplification, not attenuation. At singular value 1.05, the W_hh contribution dominates."
+      ]
+    }
+  },
+  {
+    "id": "c003",
+    "rank": "C",
+    "week": 4,
+    "category": "Backpropagation",
+    "question": "You have a neural network with ReLU activations. During training, you notice that 40% of your neurons have zero gradient for every example in a mini-batch. This persists across many batches. What is happening and what is the best fix?",
+    "choices": [
+      "A) This is the 'dying ReLU' problem where neurons with negative pre-activation for all inputs have permanently zero gradients; the best fix is to use Leaky ReLU or He initialization",
+      "B) This is normal and expected -- ReLU is supposed to zero out 40% of neurons as a form of sparsity; no fix is needed",
+      "C) This means the learning rate is too high, causing weights to overshoot into permanently negative regions; reducing the learning rate will fix it"
+    ],
+    "correct": 0,
+    "explanation": {
+      "correct": "The 'dying ReLU' problem occurs when a neuron's weights push the pre-activation (Wx+b) to be negative for ALL inputs in the dataset. Since ReLU outputs 0 for negative inputs, the gradient is also 0, meaning the weights receive no gradient updates and the neuron is permanently dead. 40% dead neurons across persistent batches is a clear sign. Solutions: (1) Leaky ReLU (f(x)=max(0.01x, x)) allows small gradients for negative inputs, preventing death; (2) He initialization (var = 2/fan_in) initializes weights to avoid starting in dead regions; (3) Lower learning rates can help preventatively but cannot revive already-dead neurons.",
+      "wrong": [
+        "While ReLU sparsity is sometimes cited as beneficial (biological plausibility, representational efficiency), having 40% of neurons CONSISTENTLY dead across ALL batches is not healthy sparsity -- it is wasted capacity. Healthy sparsity means neurons are selectively active for different inputs, not permanently dead. If the same 40% are dead for every batch, those neurons contribute nothing to the model. Healthy ReLU networks typically have 50% activation per input, but different neurons are active for different inputs.",
+        "While excessively high learning rates can contribute to dying ReLU (large gradient updates push weights far into negative territory), reducing the learning rate only prevents FUTURE neuron death. Already-dead neurons have zero gradient regardless of learning rate and cannot be revived by any learning rate change. Moreover, low learning rates cause other problems (slow convergence, getting stuck). Architectural changes (Leaky ReLU) address the root cause."
+      ]
+    }
+  },
+  {
+    "id": "c004",
+    "rank": "C",
+    "week": 4,
+    "category": "Batch Normalization",
+    "question": "You train a model with Batch Normalization using a batch size of 256 and achieve great results. At inference, you process one sample at a time (batch size 1). A colleague worries that BN cannot work with batch size 1. Is this correct?",
+    "choices": [
+      "A) Yes, BN requires a batch to compute mean and variance, so it fails with batch size 1",
+      "B) It depends on the framework; some compute single-sample statistics and others use running statistics",
+      "C) No, BN uses running (exponential moving average) statistics collected during training for inference, so batch size does not matter at test time"
+    ],
+    "correct": 2,
+    "explanation": {
+      "correct": "During training, BN computes per-batch mean and variance for normalization AND maintains running averages (exponential moving averages) of these statistics. At inference time (model.eval() in PyTorch), BN switches to using the running statistics instead of batch statistics. This means inference is completely independent of batch size -- you can process a single sample. The running mean and running variance are fixed model parameters after training, making BN deterministic at inference.",
+      "wrong": [
+        "This is a common misconception. BN has two modes: training mode (uses batch statistics) and evaluation mode (uses stored running statistics). The batch-size dependency only applies during training. At inference, BN is a simple affine transformation using pre-computed statistics, and works identically for any batch size including 1.",
+        "All major frameworks (PyTorch, TensorFlow, JAX) use running statistics at inference by default. This is not framework-dependent; it is part of the original BN specification (Ioffe & Szegedy, 2015). The only caveat is that you must properly set the model to evaluation mode (model.eval() in PyTorch or training=False in TF). Forgetting to do this IS a common bug, but it is a user error, not a framework limitation."
+      ]
+    }
+  },
+  {
+    "id": "c005",
+    "rank": "C",
+    "week": 4,
+    "category": "Dropout Math",
+    "question": "You use dropout with p=0.5 on a hidden layer during training. What is the variance of the output of a single neuron during training compared to inference (with standard inverted dropout)?",
+    "choices": [
+      "A) The variance is the same during training and inference because inverted dropout is specifically designed to match the moments",
+      "B) The MEAN is matched between training and inference, but the VARIANCE during training is higher due to the stochastic masking -- specifically, Var(train) = (1/(1-p)) * Var(inference) for p=0.5",
+      "C) Both mean and variance are higher during training because of the 1/(1-p) scaling factor"
+    ],
+    "correct": 1,
+    "explanation": {
+      "correct": "Let a be the pre-dropout activation. With inverted dropout (p=0.5), the output is a*(Bernoulli(0.5)/0.5) = a*m where m is 0 with prob 0.5 and 2 with prob 0.5. E[a*m] = a*E[m] = a*1 = a (matches inference). But Var(a*m) = a^2*Var(m) = a^2*(E[m^2]-E[m]^2) = a^2*(2-1) = a^2. At inference, the output is deterministic: just a, with Var=0 (given fixed input). So training has MUCH higher variance. The ratio formula Var(train) = Var_intrinsic + a^2*p/(1-p) captures the extra 'dropout noise.' Inverted dropout only matches the FIRST moment (mean), not the second (variance).",
+      "wrong": [
+        "Inverted dropout is designed to match the EXPECTED VALUE (first moment), not the variance (second moment). The stochastic binary mask introduces multiplicative noise that necessarily increases variance. There is no way to have a stochastic output with the same mean AND variance as a deterministic output -- the mask's randomness adds variance by definition.",
+        "The mean IS correctly matched (that is the point of the 1/(1-p) scaling). The variance is indeed higher during training, but the claim that the mean is also higher is wrong. With inverted dropout: E[a * mask/(1-p)] = a * p * (1/(1-p)) ... wait, let us be precise. mask is 1 with prob (1-p) and 0 with prob p. So E[a * mask/(1-p)] = a * (1-p)/(1-p) = a. The mean is exactly matched."
+      ]
+    }
+  },
+  {
+    "id": "c006",
+    "rank": "C",
+    "week": 4,
+    "category": "CNNs",
+    "question": "You design a CNN and replace all 5x5 convolutions with two stacked 3x3 convolutions (both with the same number of filters). Assuming the same number of input and output channels C, how do the parameter counts compare?",
+    "choices": [
+      "A) Two 3x3 convolutions have MORE parameters: 2 * (3*3*C*C) = 18C^2 vs 5*5*C*C = 25C^2 -- wait, that means two 3x3 have FEWER parameters",
+      "B) Two 3x3 convolutions have fewer parameters (18C^2 + 2C bias vs 25C^2 + C bias) and the same effective receptive field of 5x5",
+      "C) Two 3x3 convolutions have the same receptive field but HIGHER computational cost due to the intermediate activation map"
+    ],
+    "correct": 1,
+    "explanation": {
+      "correct": "A single 5x5 conv: 5*5*C*C + C = 25C^2 + C parameters. Two stacked 3x3 convs: 2*(3*3*C*C + C) = 18C^2 + 2C parameters. The ratio is 18/25 = 72%, so the two 3x3 layers use 28% fewer parameters. The effective receptive field is the same: two 3x3 convolutions with stride 1 cover a 5x5 receptive field (each 3x3 adds 2 to the receptive field per dimension, so 3 + 2 = 5). Additionally, two 3x3 convolutions with a non-linearity between them have more representational power than a single 5x5. This is the key insight from VGGNet.",
+      "wrong": [
+        "This answer starts computing correctly but gets confused mid-calculation. The final numbers are right (18C^2 < 25C^2), but the answer is presented in a confusing self-contradictory way. The clean answer is: two 3x3 convolutions have FEWER parameters than one 5x5, by a factor of 18/25.",
+        "While there IS an intermediate activation map that requires memory, the total number of multiply-add operations (FLOPs) is actually LOWER for two 3x3 convolutions than one 5x5 (by the same 18/25 ratio), not higher. The intermediate activation map costs memory but not additional computation. In practice, two 3x3 convolutions are cheaper in both parameters AND FLOPs compared to a single 5x5."
+      ]
+    }
+  },
+  {
+    "id": "c007",
+    "rank": "C",
+    "week": 4,
+    "category": "Backpropagation",
+    "question": "In a network using sigmoid activations, you observe that gradients in the first layer are on the order of 1e-10 while gradients in the last layer are on the order of 1e-1. You switch to ReLU activations. Surprisingly, training gets WORSE. What could explain this?",
+    "choices": [
+      "A) ReLU causes dying neurons, which can be worse than vanishing gradients if a large fraction of the network dies during the first few updates",
+      "B) This is impossible; ReLU always outperforms sigmoid in deep networks",
+      "C) ReLU removes the vanishing gradient problem but introduces exploding gradients, which destabilize training"
+    ],
+    "correct": 0,
+    "explanation": {
+      "correct": "When switching from sigmoid to ReLU without adjusting initialization and learning rate, a common failure mode is massive neuron death in the early training phase. If the initial weights or learning rate are tuned for sigmoid (which has bounded outputs and gradients), ReLU can produce large activations that cause large gradient updates, which push many neurons into permanently negative pre-activations. Xavier/Glorot initialization (designed for sigmoid/tanh) should be replaced with He initialization (designed for ReLU). Without this change, the initial dynamics can kill a majority of neurons in the first few updates.",
+      "wrong": [
+        "This is demonstrably false. There are well-documented cases where ReLU performs worse than sigmoid, particularly when initialization, learning rate, and architecture are not adapted. Additionally, for shallow networks, recurrent networks, and certain architectures, sigmoid or tanh may be more appropriate. 'Always' claims about activation functions are almost always wrong.",
+        "While ReLU does not have the bounded gradient of sigmoid, saying it 'introduces exploding gradients' oversimplifies. ReLU's gradient is either 0 or 1 -- it does not amplify gradients the way unbounded activations might. Exploding gradients in deep ReLU networks are more related to weight initialization and residual connections than to ReLU itself. The more specific and practical answer is dying ReLU."
+      ]
+    }
+  },
+  {
+    "id": "c008",
+    "rank": "C",
+    "week": 4,
+    "category": "Batch Normalization",
+    "question": "You train a model with Batch Normalization and notice that performance degrades significantly when you change the batch size from 64 to 4 at training time. Why?",
+    "choices": [
+      "A) Smaller batches have noisier gradient estimates, which slows convergence",
+      "B) The learning rate needs to be scaled proportionally with batch size for BN to work correctly",
+      "C) BN computes per-batch mean and variance; with batch size 4, these statistics are extremely noisy estimates of the true population statistics, causing unstable normalization and poor training"
+    ],
+    "correct": 2,
+    "explanation": {
+      "correct": "Batch Normalization normalizes activations using the mean and variance computed from the CURRENT mini-batch. With batch size 4, these statistics are computed from only 4 samples, making them highly variable and unreliable estimates of the true data distribution. This noise propagates through the network, destabilizing training and degrading the learned running statistics. This is a well-known BN limitation, which motivated alternatives like Layer Normalization (batch-size independent), Group Normalization, and Instance Normalization for small-batch scenarios.",
+      "wrong": [
+        "While noisier gradients from small batches are real, this is a general SGD phenomenon and not specific to BN. The question asks why performance degrades SIGNIFICANTLY, which points to a BN-specific issue. Standard SGD with small batches still converges (just with more noise); the dramatic degradation when BN is used with tiny batches is due to unreliable batch statistics, which is a much more severe effect.",
+        "While learning rate scaling is important when changing batch sizes (the linear scaling rule), this is again a general optimization concern, not BN-specific. The dramatic degradation with BN at small batch sizes is primarily due to unreliable batch statistics, not learning rate mismatch. You could perfectly tune the learning rate and still see BN degrade with batch size 4 because the statistics themselves are unreliable."
+      ]
+    }
+  },
+  {
+    "id": "c009",
+    "rank": "C",
+    "week": 4,
+    "category": "RNNs/LSTMs",
+    "question": "An LSTM mitigates the vanishing gradient problem compared to a vanilla RNN. However, a colleague claims LSTMs COMPLETELY solve vanishing gradients for arbitrarily long sequences. Is this correct?",
+    "choices": [
+      "A) Yes, the cell state provides an uninterrupted gradient highway with additive updates, ensuring gradients flow perfectly across any sequence length",
+      "B) Yes, because the gates are all sigmoid functions with gradients bounded away from zero",
+      "C) No, while the cell state helps, the forget gate can still attenuate gradients. If the forget gate value is 0.9, gradients through the cell state decay as 0.9^T over T timesteps, which still vanishes for very long T"
+    ],
+    "correct": 2,
+    "explanation": {
+      "correct": "The LSTM cell state update is c_t = f_t * c_{t-1} + i_t * g_t. The gradient flowing through the cell state across T timesteps is approximately the product of forget gate values: prod(f_t) over T steps. Even if each f_t is close to 1 (say 0.9), over 1000 timesteps: 0.9^1000 is approximately 0 (it is about 1.7e-46). So gradients still vanish, just much more slowly than in vanilla RNNs. LSTMs MITIGATE vanishing gradients but do not eliminate them. For truly long-range dependencies (thousands of steps), even LSTMs struggle, which motivated Transformers with their direct attention connections.",
+      "wrong": [
+        "The cell state does provide an 'additive' update path, but the forget gate f_t is a multiplicative factor applied at every time step. Even small deviations below 1.0 in the forget gate compound exponentially over time. The gradient highway is only uninterrupted if the forget gate is EXACTLY 1.0 at every step for the relevant cell dimensions, which never happens in practice.",
+        "The sigmoid function has gradients that CAN be very close to zero -- sigmoid'(x) approaches 0 for large positive or negative x. More importantly, the issue is not the gradient of the gates themselves, but the VALUE of the forget gate being less than 1, which multiplicatively attenuates the cell state gradient. Even if the forget gate's sigmoid has a healthy gradient, its OUTPUT value controls cell state attenuation."
+      ]
+    }
+  },
+  {
+    "id": "b001",
+    "rank": "B",
+    "week": 5,
+    "category": "Transformers",
+    "question": "In the original Transformer (Vaswani et al., 2017), the self-attention computation is Attention(Q,K,V) = softmax(QK^T / sqrt(d_k))V. Why is the scaling factor sqrt(d_k) necessary?",
+    "choices": [
+      "A) Without scaling, the dot products QK^T grow in magnitude proportionally to d_k, pushing softmax inputs into regions where its gradients are vanishingly small, effectively making attention nearly one-hot and killing gradient flow",
+      "B) The scaling is for numerical stability to prevent floating-point overflow in the dot products",
+      "C) The scaling ensures that the output of attention has unit variance, which is needed for residual connections to work properly"
+    ],
+    "correct": 0,
+    "explanation": {
+      "correct": "If q and k are vectors with d_k components, each drawn independently with mean 0 and variance 1, then their dot product q*k has mean 0 and variance d_k. For large d_k (e.g., 64 or 512), the dot products have large magnitude, pushing softmax inputs to extreme values where softmax(x) approaches a one-hot vector. In this regime, softmax gradients are nearly zero (the Jacobian of softmax is diag(p) - pp^T, which has small entries when p is near one-hot). Dividing by sqrt(d_k) normalizes the variance of dot products back to 1, keeping softmax in a regime with meaningful gradients.",
+      "wrong": [
+        "While numerical stability can be a concern, standard float32 can represent numbers up to ~3.4e38. Even with d_k=512, dot products are typically in the range of tens, far from overflow. The primary purpose of the scaling is controlling softmax saturation and gradient flow, not preventing overflow. In practice, numerical stability in attention is handled by the log-sum-exp trick in the softmax computation.",
+        "While the scaling does help maintain reasonable activation magnitudes, the primary motivation is not about residual connections. The residual connection adds the attention output to the input, and LayerNorm handles any scale mismatch. The scaling specifically addresses the softmax gradient problem: without it, attention becomes degenerate (one-hot) and untrainable for large d_k."
+      ]
+    }
+  },
+  {
+    "id": "b002",
+    "rank": "B",
+    "week": 5,
+    "category": "Attention Mechanisms",
+    "question": "In multi-head attention with h=8 heads and model dimension d_model=512, each head operates on d_k = d_model/h = 64 dimensions. A colleague suggests using a single head with d_k=512 instead, arguing it has the same total computation. What is the key difference?",
+    "choices": [
+      "A) Single-head attention with d_k=512 has more parameters than 8-head attention with d_k=64",
+      "B) Multi-head attention allows the model to attend to information from different representation subspaces at different positions simultaneously, while single-head attention can only learn one attention pattern per layer",
+      "C) Multi-head attention is faster due to parallelism, but single-head attention produces richer representations"
+    ],
+    "correct": 1,
+    "explanation": {
+      "correct": "With a single attention head, there is ONE attention distribution over positions, meaning each position can only focus on one weighted combination of other positions. With 8 heads, the model simultaneously computes 8 DIFFERENT attention patterns, each potentially capturing different relationships (e.g., one head attends to syntactic structure, another to semantic similarity, another to positional proximity). The outputs are concatenated and projected, combining multiple perspectives. This was shown to be crucial: different heads in trained Transformers learn qualitatively different attention patterns.",
+      "wrong": [
+        "The parameter count is actually the SAME. Multi-head attention uses W_Q, W_K, W_V of size d_model x d_k per head, plus W_O of size (h*d_k) x d_model. Total: 3*h*d_model*d_k + d_model^2 = 3*d_model^2 + d_model^2 = 4*d_model^2. Single-head with d_k=d_model: 3*d_model*d_model + d_model*d_model = 4*d_model^2. Same parameter count, same FLOPs, fundamentally different inductive bias.",
+        "Multi-head attention is not inherently faster or slower than single-head. The total FLOPs are similar (with proper implementation, the heads can be batched into a single matrix multiplication). And single-head attention does NOT produce 'richer' representations -- it produces a single attention pattern that must compromise between multiple relationship types, which is strictly less expressive than multiple heads capturing different patterns."
+      ]
+    }
+  },
+  {
+    "id": "b003",
+    "rank": "B",
+    "week": 5,
+    "category": "VAEs",
+    "question": "You train a VAE and notice the KL divergence term drops to near zero early in training while the reconstruction loss remains high. This is known as 'posterior collapse.' What is happening?",
+    "choices": [
+      "A) The encoder is outputting the prior distribution (standard normal) for all inputs, meaning the latent code carries no information about the input, and the decoder ignores the latent code and models the data using only its own capacity",
+      "B) The model has perfectly learned the data distribution; KL=0 means the approximate posterior matches the prior, which is optimal",
+      "C) The learning rate is too high, causing the KL term to be over-optimized at the expense of reconstruction"
+    ],
+    "correct": 0,
+    "explanation": {
+      "correct": "Posterior collapse occurs when the encoder q(z|x) collapses to the prior p(z) = N(0,I) for all inputs x, meaning the latent representation z carries zero information about x. The decoder, receiving uninformative z samples, learns to model p(x) using only its own parameters (e.g., outputting the data mean). The VAE loss is Reconstruction + beta*KL, and the optimizer finds it 'easier' to minimize KL to 0 (by matching the prior) than to learn a useful latent representation. This is especially common with powerful decoders (autoregressive, deep) that can model data without latent information. Fixes include KL annealing, free bits, or weakening the decoder.",
+      "wrong": [
+        "KL=0 is NOT optimal. A useful VAE has non-zero KL because the posterior should be INPUT-DEPENDENT: different inputs should map to different regions of latent space. If q(z|x) = p(z) for all x, then the latent space carries no information, and the VAE has degenerated into a standard generative model without useful latent representations. The 'optimal' VAE trades off reconstruction quality against KL divergence, with KL > 0 indicating that the latent code is being used.",
+        "While learning rate can affect the KL/reconstruction trade-off, posterior collapse is a fundamental structural problem, not just an optimization one. It occurs even with well-tuned learning rates because the ELBO objective has a local optimum where KL=0 and the decoder ignores z. The root cause is the tension between the KL penalty pushing the posterior toward the prior and the reconstruction loss requiring informative latent codes."
+      ]
+    }
+  },
+  {
+    "id": "b004",
+    "rank": "B",
+    "week": 5,
+    "category": "GANs",
+    "question": "You train a GAN and observe that the discriminator loss quickly drops to zero while the generator loss diverges. What is the most likely diagnosis and fix?",
+    "choices": [
+      "A) The discriminator is too powerful relative to the generator; you should reduce discriminator capacity or train the generator for more steps per discriminator step",
+      "B) This is normal GAN training behavior; the discriminator should dominate early and the generator catches up later",
+      "C) The generator has mode collapse -- it produces a single image that the discriminator easily detects"
+    ],
+    "correct": 0,
+    "explanation": {
+      "correct": "When the discriminator becomes too strong, it can perfectly distinguish real from fake samples, giving the generator zero useful gradient signal. The discriminator loss at 0 means it classifies everything perfectly. For the original GAN loss (-log(D(G(z)))), when D is perfect, the generator receives vanishing gradients because D(G(z)) is approximately 0 and -log(0) diverges but grad approaches 0 in a saturated sigmoid. This is a training imbalance. Fixes: reduce discriminator capacity, use label smoothing, add noise to discriminator inputs, train generator multiple steps per discriminator step, or use Wasserstein GAN which provides meaningful gradients even when the critic is optimal.",
+      "wrong": [
+        "This is NOT normal. In healthy GAN training, the discriminator and generator should be roughly balanced, with the discriminator slightly ahead. If the discriminator loss is at 0 and the generator loss is diverging, training has collapsed -- the generator is not learning. Waiting for the 'generator to catch up' will not work because the generator receives no useful gradient signal when the discriminator is perfect.",
+        "Mode collapse produces a different signature. In mode collapse, the generator produces limited variety but the generated samples may still fool the discriminator somewhat, so discriminator loss stays above zero. The described pattern (discriminator at 0, generator diverging) is specifically a discriminator-dominance problem, not mode collapse. Mode collapse typically shows oscillating but finite generator loss, not diverging loss."
+      ]
+    }
+  },
+  {
+    "id": "b005",
+    "rank": "B",
+    "week": 5,
+    "category": "RL Fundamentals",
+    "question": "In Q-learning, you use an epsilon-greedy policy with epsilon=0.1 for exploration. Your Q-values have converged. A colleague says the learned Q-values represent the optimal policy. Is this correct?",
+    "choices": [
+      "A) Yes, Q-learning is an off-policy algorithm that learns Q* (the optimal Q-function) regardless of the exploration policy used",
+      "B) No, the Q-values reflect the epsilon-greedy policy, not the optimal policy, because the agent continues exploring during convergence",
+      "C) Only if the state-action space has been sufficiently explored; otherwise Q-values may have converged to suboptimal values"
+    ],
+    "correct": 0,
+    "explanation": {
+      "correct": "Q-learning uses the update rule: Q(s,a) <- Q(s,a) + alpha * [r + gamma * max_a' Q(s',a') - Q(s,a)]. The critical term is 'max_a'' -- the update always bootstraps from the GREEDY action (the max), not from the action actually taken by the epsilon-greedy behavior policy. This makes Q-learning OFF-POLICY: it learns about the greedy optimal policy while following a different (exploratory) policy. Given sufficient exploration and appropriate learning rate decay (Robbins-Monro conditions), Q-learning converges to Q* regardless of epsilon, as long as all state-action pairs are visited infinitely often.",
+      "wrong": [
+        "This describes SARSA, not Q-learning. SARSA is on-policy: its update uses Q(s', a') where a' is the action actually taken by the policy (including exploration). SARSA learns Q^pi for the current epsilon-greedy policy, not Q*. Q-learning, by using max_a' Q(s',a'), always learns about the optimal policy. This on-policy vs off-policy distinction is one of the most important concepts in RL.",
+        "While insufficient exploration can prevent convergence to the true Q*, the question states Q-values HAVE converged. Given the theoretical guarantees of Q-learning (convergence under Robbins-Monro conditions and infinite exploration), converged Q-values represent Q*. The concern about suboptimal convergence is valid in practice (function approximation can cause divergence), but for tabular Q-learning as described, convergence implies optimality."
+      ]
+    }
+  },
+  {
+    "id": "b006",
+    "rank": "B",
+    "week": 6,
+    "category": "Transformers",
+    "question": "GPT-style models use causal (masked) self-attention where each position can only attend to itself and previous positions. BERT uses bidirectional self-attention. You want to fine-tune a pre-trained model for text classification. Which is more suitable, and why?",
+    "choices": [
+      "A) GPT is better because causal attention forces the model to learn predictive representations that transfer better to downstream tasks",
+      "B) Both are equally suitable because the fine-tuning process adapts the pre-trained representations regardless of the attention pattern",
+      "C) BERT is more suitable because bidirectional attention allows each token's representation to incorporate context from BOTH directions, producing richer contextualized embeddings for classification. GPT's causal masking means the first token can only 'see' itself, wasting positional information"
+    ],
+    "correct": 2,
+    "explanation": {
+      "correct": "For classification tasks, you want each token's representation to capture the full context of the sentence. BERT's bidirectional attention means every token representation is informed by ALL other tokens. In GPT, the representation of the i-th token only sees tokens 1..i, so early tokens have impoverished representations. For classification (typically using the [CLS] token or pooled representations), BERT's bidirectional context provides strictly more information per position. This is why BERT-style models historically dominated NLU benchmarks before large-scale GPT models closed the gap through sheer scale.",
+      "wrong": [
+        "While autoregressive pre-training does learn useful representations, the causal constraint LIMITS the information available at each position for classification. A representation that can only see leftward context is objectively less informed than one that sees full context. Larger GPT models can compensate for this with scale, but architecture-for-architecture, bidirectional attention is superior for classification.",
+        "The attention pattern significantly affects what information is encoded in representations. Fine-tuning adjusts weights but cannot overcome the fundamental architectural constraint that causal attention prevents early tokens from seeing later tokens. The information asymmetry between positions in causal attention creates an uneven representation quality that fine-tuning cannot fully correct."
+      ]
+    }
+  },
+  {
+    "id": "b007",
+    "rank": "B",
+    "week": 6,
+    "category": "GANs",
+    "question": "You train a Wasserstein GAN (WGAN) with gradient penalty and observe that the critic loss is negative and its absolute value keeps increasing during training. Is this a problem?",
+    "choices": [
+      "A) Yes, a diverging critic loss means training is unstable and the model is failing",
+      "B) No, in WGAN the critic loss approximates the (negative) Wasserstein distance between real and generated distributions. As the generator improves, the distributions get closer and the critic loss magnitude should DECREASE, so an increasing magnitude is indeed a problem",
+      "C) No, an increasing critic loss magnitude is expected early in WGAN training -- it means the critic is getting better at estimating the Wasserstein distance. The generator quality should be assessed by looking at generated samples, not the critic loss"
+    ],
+    "correct": 2,
+    "explanation": {
+      "correct": "In WGAN, the critic maximizes E[f(x_real)] - E[f(x_fake)] subject to the Lipschitz constraint. A more negative critic loss (larger absolute value) means the critic has found a larger Wasserstein distance between distributions, which happens when (a) the critic improves its estimate, or (b) the distributions are far apart. Early in training, both are true: the critic is learning to better estimate the distance while the generator has not yet caught up. The Wasserstein distance IS a useful metric -- unlike the original GAN's discriminator loss, it correlates with generator quality. But the magnitude increasing early on is normal, especially when the critic is trained more frequently than the generator.",
+      "wrong": [
+        "A diverging loss does NOT necessarily mean instability in WGAN. Unlike the original GAN where the discriminator loss going to 0 indicates collapse, WGAN's critic loss is designed to approximate the Wasserstein distance, which is an unbounded quantity. The loss magnitude can legitimately increase before the generator 'catches up.' True instability would show as erratic oscillations or NaN values, not a smooth increase.",
+        "This answer gets the relationship backwards. In WGAN, the critic loss is -(E[f(real)] - E[f(fake)]). As the generator IMPROVES and fake samples become more like real samples, the Wasserstein distance DECREASES, so the critic loss magnitude decreases. An INCREASING magnitude means either the critic is getting better at estimation OR the distributions are still far apart. The claim that magnitude should decrease as the generator improves is correct for the later stages but the conclusion that increasing magnitude is always a problem is wrong -- early in training, the critic improving is expected."
+      ]
+    }
+  },
+  {
+    "id": "b008",
+    "rank": "B",
+    "week": 6,
+    "category": "VAEs",
+    "question": "You want to generate new images from a trained VAE. You sample z ~ N(0, I) and pass it through the decoder. The generated images are blurry compared to the training data. Why?",
+    "choices": [
+      "A) The decoder network does not have enough capacity to generate sharp images",
+      "B) The VAE's reconstruction loss (typically MSE) optimizes for the mean of the conditional distribution p(x|z), which averages over multiple plausible images for each z, producing blurriness. This is a fundamental consequence of the probabilistic framework, not a capacity issue",
+      "C) The sampled z values are outside the range that the encoder produces, so the decoder receives out-of-distribution inputs"
+    ],
+    "correct": 1,
+    "explanation": {
+      "correct": "The VAE decoder models p(x|z) as a Gaussian with mean mu(z) and fixed variance. Training maximizes the ELBO, which includes E[log p(x|z)] -- for Gaussian p(x|z), this reduces to MSE between the decoder output and x. For a given z, multiple training images may be plausible (because the encoder maps nearby images to overlapping regions in latent space). The MSE-optimal decoder output is the MEAN of these images, which is blurry. This is fundamental to VAEs: they model a distribution over outputs and the mean of a distribution over sharp images is a blurry image. GANs avoid this by using an adversarial loss that penalizes blurriness.",
+      "wrong": [
+        "Capacity is not the main issue. Even a very high-capacity decoder trained with MSE will produce blurry outputs because MSE rewards the conditional mean, not any specific sharp sample. Increasing decoder capacity just gives a sharper estimate of the conditional mean, which is still blurry when there are multiple plausible sharp images for a given z. The fundamental issue is the choice of reconstruction loss, not model capacity.",
+        "If the VAE is well-trained, the KL divergence term encourages the aggregate posterior to match N(0,I), so sampling from N(0,I) should produce z values within the encoder's typical range. Out-of-distribution z is more of an issue when the KL weight is very low or the latent space has 'holes.' For a properly trained VAE, blurriness is primarily due to the MSE reconstruction loss, not out-of-distribution sampling."
+      ]
+    }
+  },
+  {
+    "id": "b009",
+    "rank": "B",
+    "week": 6,
+    "category": "RL Fundamentals",
+    "question": "You implement policy gradient (REINFORCE) and observe extremely high variance in your gradient estimates, causing training instability. You add a baseline b(s) to get gradient estimate: nabla log pi(a|s) * (R - b(s)). A colleague suggests using b(s) = V(s) (the state value function). Does this bias the gradient estimate?",
+    "choices": [
+      "A) Yes, subtracting any non-zero baseline biases the gradient, but the variance reduction is worth the small bias",
+      "B) It depends on how accurately V(s) is estimated; an inaccurate value function introduces bias",
+      "C) No, subtracting a state-dependent baseline b(s) does NOT bias the policy gradient as long as b(s) does not depend on the action a. This is because E_a[nabla log pi(a|s) * b(s)] = 0 for any b(s)"
+    ],
+    "correct": 2,
+    "explanation": {
+      "correct": "The key identity: E_a[nabla_theta log pi(a|s) * b(s)] = b(s) * E_a[nabla_theta log pi(a|s)] = b(s) * nabla_theta sum_a pi(a|s) = b(s) * nabla_theta 1 = 0. Since the expected gradient of the log-probability weighted by any state-dependent (but action-independent) baseline is zero, subtracting b(s) does not change the expected gradient (no bias) while potentially dramatically reducing variance. V(s) is the optimal baseline in a certain sense (minimizes variance). This is a fundamental result in policy gradient theory.",
+      "wrong": [
+        "This is incorrect. Subtracting a state-dependent, action-independent baseline provably does NOT bias the gradient. The mathematical proof is straightforward (see the derivation in the correct answer). This is one of the most important theoretical results in policy gradient methods, enabling practical algorithms like A2C and PPO.",
+        "Even an inaccurate estimate of V(s) does not bias the policy gradient, as long as the estimate depends only on the state, not the action taken. An inaccurate V(s) simply provides suboptimal variance reduction (the variance will be higher than with the true V(s)), but the gradient remains unbiased. Bias in the VALUE FUNCTION estimate is a separate concern from bias in the POLICY GRADIENT estimate. Actor-critic methods CAN introduce bias through bootstrapping (using V to estimate returns), but the baseline subtraction itself is always unbiased."
+      ]
+    }
+  },
+  {
+    "id": "a001",
+    "rank": "A",
+    "week": 6,
+    "category": "Optimization Theory",
+    "question": "You train a neural network with SGD and find that the loss surface has a saddle point where the Hessian has both positive and negative eigenvalues. The ratio of negative eigenvalues is 1 out of 1,000,000 parameters. A colleague says saddle points are not a practical concern because the probability of the gradient being near zero in ALL directions simultaneously is negligible. Is this reasoning correct?",
+    "choices": [
+      "A) No, the concern is not landing exactly at the saddle point but being in the saddle's 'attractor region' where gradients are small in most directions, causing optimization to slow dramatically even if not at the exact saddle",
+      "B) Yes, in high dimensions the probability of landing exactly at a saddle point is measure-zero, so they are irrelevant in practice",
+      "C) No, but for a different reason: in high dimensions, nearly ALL critical points are saddle points (not local minima), so the loss surface is dominated by saddle points and they are the primary obstacle to optimization"
+    ],
+    "correct": 0,
+    "explanation": {
+      "correct": "The practical problem with saddle points is not about reaching the exact critical point (measure zero) but about the 'saddle point plateau' -- a region around the saddle where the loss surface is very flat and gradients are small. In this region, gradient-based methods make very slow progress because the gradient direction is dominated by the eigenvectors with the smallest eigenvalues. With 999,999 positive eigenvalues and only 1 negative eigenvalue, the gradient overwhelmingly points along the positive-curvature directions, and progress along the single escape direction (negative curvature) is extremely slow. This phenomenon can trap optimizers for many iterations.",
+      "wrong": [
+        "While the probability of being EXACTLY at the saddle point is zero, the NEIGHBORHOOD of a saddle point has near-zero gradients and can trap optimization for many iterations. The 'measure-zero' argument confuses a topological property with the practical dynamics of optimization. First-order methods (SGD) slow down dramatically near saddle points even without ever reaching them exactly.",
+        "While it is true that in high dimensions most critical points are saddle points (Baldi & Hornik, 1989; Dauphin et al., 2014), the argument as stated does not address the colleague's reasoning about gradient magnitude. The correct counter is about the slow dynamics near saddle points, not the prevalence of saddle points. Additionally, the claim that saddle points are the PRIMARY obstacle is debated; recent work suggests that SGD noise helps escape saddle points relatively quickly, and the real bottleneck may be flat valleys or narrow pathways."
+      ]
+    }
+  },
+  {
+    "id": "a002",
+    "rank": "A",
+    "week": 6,
+    "category": "Information Theory",
+    "question": "You compute the cross-entropy loss of your language model and get 2.5 nats. You convert this to perplexity. A colleague converts 2.5 to perplexity using 2^2.5 = 5.66. What is wrong?",
+    "choices": [
+      "A) Nothing is wrong; perplexity is always 2^(cross-entropy) regardless of the logarithm base",
+      "B) Perplexity should be calculated as 10^2.5 = 316.23 because perplexity uses base-10 logarithms by convention",
+      "C) The cross-entropy is in nats (natural log, base e), so perplexity should be e^2.5 = 12.18, not 2^2.5 = 5.66. The formula 2^H only applies when cross-entropy is measured in bits (log base 2)"
+    ],
+    "correct": 2,
+    "explanation": {
+      "correct": "Perplexity is defined as exp(H) where H is the cross-entropy and exp uses the same base as the logarithm in H. 'Nats' means natural logarithm (base e), so H=2.5 nats gives perplexity = e^2.5 = 12.18. 'Bits' means log base 2, which would give perplexity = 2^H. If H were 2.5 bits, perplexity would be 2^2.5 = 5.66. But 2.5 nats is not 2.5 bits -- to convert: 2.5 nats = 2.5/ln(2) = 3.61 bits, and 2^3.61 = 12.18, confirming the answer. This unit mismatch is a common practical error.",
+      "wrong": [
+        "The base matters critically. Perplexity = b^(H_b) where b is the base of the logarithm and H_b is the cross-entropy in that base. Using 2^H when H is in nats (base e) gives a wrong answer. 2^2.5 = 5.66 but the correct answer is e^2.5 = 12.18. The error grows with larger H values.",
+        "Base-10 logarithms are not standard in information theory or NLP. The two common conventions are: bits (log base 2, used in classical information theory) and nats (natural log, used in deep learning where cross-entropy loss uses ln). Using log base 10 would give perplexity = 10^2.5 = 316.23, which is incorrect by a large margin."
+      ]
+    }
+  },
+  {
+    "id": "a003",
+    "rank": "A",
+    "week": 7,
+    "category": "Diffusion Models",
+    "question": "In a denoising diffusion probabilistic model (DDPM), the forward process adds Gaussian noise over T steps. The reverse process (denoising) is parameterized by a neural network that predicts what at each step?",
+    "choices": [
+      "A) The network predicts the clean image x_0 directly at each denoising step",
+      "B) The network predicts the mean and variance of the reverse transition distribution p(x_{t-1}|x_t)",
+      "C) The network predicts the noise epsilon that was added at each step, which is then used to compute the denoised estimate. Ho et al. (2020) found that predicting noise (epsilon-prediction) works better than predicting x_0 or the mean directly"
+    ],
+    "correct": 2,
+    "explanation": {
+      "correct": "While the reverse process is mathematically defined as learning the mean (and optionally variance) of p(x_{t-1}|x_t), Ho et al. (2020) showed that reparameterizing the network to predict the noise epsilon added during the forward process leads to a simpler training objective that resembles denoising score matching. The training loss becomes ||epsilon - epsilon_theta(x_t, t)||^2, where epsilon_theta is the network's noise prediction. This epsilon-prediction was found to work significantly better in practice than predicting x_0 or the mean directly. The predicted noise is then used algebraically to compute the reverse step mean.",
+      "wrong": [
+        "While predicting x_0 directly is one valid parameterization (and is mathematically equivalent), Ho et al. (2020) found empirically that epsilon-prediction produces better results. The x_0-prediction parameterization has been used in some subsequent works (e.g., progressive distillation), but the standard DDPM uses epsilon-prediction. Additionally, at high noise levels, predicting x_0 directly is extremely difficult because x_t contains very little signal.",
+        "While the MATHEMATICAL formulation of the reverse process involves the mean and variance of p(x_{t-1}|x_t), the actual neural network parameterization in DDPM predicts the noise epsilon. The mean is then DERIVED from the noise prediction using the closed-form relationship between epsilon, x_t, and the reverse mean. The variance is fixed to a scheduled value in DDPM (though 'Improved DDPM' by Nichol & Dhariwal does learn variances). So the network does not directly output mean and variance."
+      ]
+    }
+  },
+  {
+    "id": "a004",
+    "rank": "A",
+    "week": 7,
+    "category": "Advanced NLP",
+    "question": "You fine-tune a pre-trained language model for sentiment analysis on 500 labeled examples. Using full fine-tuning (updating all parameters), the model overfits badly. You try LoRA (Low-Rank Adaptation) instead, which adds low-rank trainable matrices to each attention layer while freezing the original weights. LoRA works much better. Why does training FEWER parameters lead to BETTER generalization here?",
+    "choices": [
+      "A) LoRA acts as a strong regularizer: by constraining updates to a low-rank subspace, it limits the effective capacity of the changes, preventing overfitting to the small dataset while preserving the pre-trained representations",
+      "B) LoRA works better because it is faster to train, allowing more hyperparameter search within the same compute budget",
+      "C) LoRA preserves gradient flow better than full fine-tuning because frozen parameters do not accumulate gradient noise"
+    ],
+    "correct": 0,
+    "explanation": {
+      "correct": "With 500 examples and millions of parameters, full fine-tuning has far more capacity than needed, leading to memorization. LoRA restricts weight updates to the form W_0 + BA where B is d x r and A is r x d with r << d (typically r=4 or r=8). This means the update lives in a rank-r subspace, dramatically reducing the number of free parameters (from d^2 to 2*d*r). The low-rank constraint acts as an implicit regularizer: the model can only modify its behavior in a limited number of 'directions,' forcing it to find changes that are broadly useful rather than example-specific. Meanwhile, the frozen pre-trained weights preserve the rich representations learned from massive pre-training data.",
+      "wrong": [
+        "While LoRA IS faster (fewer parameters to update, lower memory), the hyperparameter search argument is not the primary explanation. Even with a FIXED set of hyperparameters, LoRA outperforms full fine-tuning on small datasets because of its regularization effect. Speed is a practical benefit, not the core mechanism for improved generalization.",
+        "Frozen parameters do not 'accumulate gradient noise' in the first place -- they simply are not updated. The gradient flow through frozen parameters is actually identical (the same forward and backward pass occurs). The benefit is not about gradient quality but about constraining the update space. Full fine-tuning has perfectly fine gradient flow; it overfits because it has too many free parameters for the data, not because of noisy gradients."
+      ]
+    }
+  },
+  {
+    "id": "a005",
+    "rank": "A",
+    "week": 7,
+    "category": "Optimization Theory",
+    "question": "You are comparing SGD with momentum to Adam for training a Transformer. On the training set, Adam converges faster. But after full training, the SGD model achieves lower test loss. A colleague finds this paradoxical. What explains it?",
+    "choices": [
+      "A) Adam overfits because it has more hyperparameters (beta1, beta2, epsilon) that need tuning, and the default values happen to be suboptimal",
+      "B) SGD with momentum tends to converge to flatter minima that generalize better, while Adam's adaptive per-parameter learning rates can converge to sharper minima. This is because Adam's effective learning rate for frequently-updated parameters decreases over time, allowing the optimizer to 'fall into' nearby sharp minima rather than traversing to flatter regions",
+      "C) This is a random fluctuation; with different random seeds, Adam would outperform SGD"
+    ],
+    "correct": 1,
+    "explanation": {
+      "correct": "This phenomenon has been extensively documented (Wilson et al., 2017; Keskar & Socher, 2017). Adam's adaptive learning rates cause it to take different-sized steps for different parameters. Parameters with large historical gradients (frequently updated) get small effective learning rates, which can cause the optimizer to stay in the local neighborhood and converge to sharp minima. SGD with momentum treats all parameters uniformly, and the inherent stochastic noise helps it escape sharp minima and find flatter ones. Flatter minima have been linked to better generalization because the loss surface in the neighborhood of a flat minimum changes less between training and test distributions.",
+      "wrong": [
+        "Adam's hyperparameters (beta1=0.9, beta2=0.999, epsilon=1e-8) are well-established defaults that work well across tasks. The generalization gap between Adam and SGD persists even with extensive hyperparameter tuning of Adam. The issue is structural -- Adam's adaptive rates change the optimization trajectory in ways that favor sharper minima -- not a matter of suboptimal hyperparameter choices.",
+        "This is a well-replicated finding, not a random fluctuation. Multiple papers across different architectures (ResNets, Transformers) have observed that SGD generalizes better than Adam when both are trained to convergence, despite Adam's faster initial convergence. The effect is consistent across random seeds and datasets, representing a genuine difference in the optimization dynamics."
+      ]
+    }
+  },
+  {
+    "id": "a006",
+    "rank": "A",
+    "week": 7,
+    "category": "Information Theory",
+    "question": "You are using the Information Bottleneck principle to analyze a neural network. Layer l learns a representation T of input X to predict Y. The objective is to minimize I(X;T) - beta * I(T;Y). A colleague says that a deeper network always has monotonically decreasing I(X;T) across layers. Is this correct?",
+    "choices": [
+      "A) Yes, by the Data Processing Inequality, I(X;T_l) must decrease with each layer since T_l is a function of T_{l-1}",
+      "B) No, I(X;T) can actually INCREASE in later layers if the network uses skip connections that reintroduce input information",
+      "C) No, the Data Processing Inequality only guarantees I(X;T_l) <= I(X;T_{l-1}), not strict decrease. With invertible transformations (like residual connections or ReLU on non-negative inputs), mutual information is preserved, and in practice I(X;T) can stay nearly constant across many layers"
+    ],
+    "correct": 2,
+    "explanation": {
+      "correct": "The Data Processing Inequality (DPI) states that for a Markov chain X -> T_{l-1} -> T_l, I(X;T_l) <= I(X;T_{l-1}). This is an UPPER BOUND, not a guarantee of decrease. If the mapping from T_{l-1} to T_l is invertible (deterministic and bijective), then I(X;T_l) = I(X;T_{l-1}) -- information is perfectly preserved. ReLU on strictly positive inputs is invertible; residual connections (T_l = T_{l-1} + f(T_{l-1})) are invertible if f is bounded. This means deep networks with residual connections can maintain high I(X;T) throughout, contradicting the 'information compression' narrative. Shwartz-Ziv & Tishby's (2017) empirical observations of compression have been debated precisely because of this.",
+      "wrong": [
+        "The DPI guarantees non-increasing, not strictly decreasing, mutual information. The distinction is critical. If every layer were a non-invertible transformation (like a projection to lower dimension), I(X;T) would strictly decrease. But many common operations (ReLU on positive inputs, residual connections, batch normalization) are approximately invertible, preserving information. The claim of 'always monotonically decreasing' is too strong.",
+        "Skip connections create a Markov structure X -> T_0 -> T_l where T_l incorporates both T_{l-1} and earlier information via the skip. However, I(X;T_l) still cannot EXCEED I(X;T_0) = I(X;X) = H(X) because T_l is ultimately a function of X. The DPI is never violated. Skip connections can preserve information that would otherwise be lost, but they cannot ADD new information about X. The correct statement is that I(X;T_l) is bounded above by I(X;T_{l-1}), and skip connections help keep it close to this bound."
+      ]
+    }
+  },
+  {
+    "id": "a007",
+    "rank": "A",
+    "week": 7,
+    "category": "Diffusion Models",
+    "question": "You use classifier-free guidance (CFG) in a conditional diffusion model with guidance scale w=7.5. The modified score is: score = (1+w) * score_conditional - w * score_unconditional. What happens if you increase w to 20?",
+    "choices": [
+      "A) Samples become more diverse because higher guidance allows the model to explore more of the distribution",
+      "B) Samples become sharper and more aligned with the conditioning signal but LESS diverse, and beyond a certain w, quality degrades as samples become oversaturated and distorted -- they move toward the mode of the conditional distribution but overshoot into unnatural territory",
+      "C) Samples are unchanged because the guidance scale only affects the sampling speed, not the final distribution"
+    ],
+    "correct": 1,
+    "explanation": {
+      "correct": "CFG amplifies the difference between the conditional and unconditional score estimates, effectively sharpening the conditional distribution. Low w gives diverse but potentially less relevant samples; higher w pushes samples more strongly toward high-probability regions of the conditional distribution. But this is not monotonically beneficial: very high w (like 20) causes the effective distribution to become extremely peaked, producing oversaturated colors, exaggerated features, and artifacts. The samples overshoot the 'natural' mode and enter an unphysical region of the data manifold. This is why w=7.5 is a popular default -- it balances fidelity and quality.",
+      "wrong": [
+        "Higher guidance REDUCES diversity, it does not increase it. The guidance term pushes the score function further from the unconditional (diverse) distribution toward the conditional (focused) one. The effect is analogous to lowering temperature in a language model: more guidance = more concentration around the conditional mode = less diversity. At w=20, most samples for the same prompt would look very similar.",
+        "The guidance scale directly affects the generated distribution, not just sampling speed. It modifies the score function used at every denoising step, changing WHAT is generated, not how fast. The effective distribution is proportional to p(x|c)^(1+w) / p(x)^w, which is a sharper version of the conditional distribution. This is fundamentally different from just adjusting the number of sampling steps."
+      ]
+    }
+  },
+  {
+    "id": "a008",
+    "rank": "A",
+    "week": 7,
+    "category": "Advanced NLP",
+    "question": "You compute BERTScore between a generated summary and a reference. You also compute ROUGE-L. The BERTScore is high (0.92) but ROUGE-L is low (0.25). What does this indicate about the generated summary?",
+    "choices": [
+      "A) The summary is semantically similar to the reference (captures the same meaning using different words/paraphrases) but has low lexical overlap (different wording). BERTScore captures semantic similarity through contextual embeddings while ROUGE-L only measures longest common subsequence of tokens",
+      "B) The summary is a poor quality paraphrase that BERTScore cannot detect because it relies on superficial embedding similarity",
+      "C) The metrics contradict each other, indicating that one of them is unreliable and should be discarded"
+    ],
+    "correct": 0,
+    "explanation": {
+      "correct": "BERTScore computes the cosine similarity between contextual embeddings of tokens in the candidate and reference, then aggregates via greedy matching. This captures SEMANTIC similarity -- 'automobile' and 'car' would score high. ROUGE-L measures the longest common subsequence of exact token matches. A high BERTScore (0.92) with low ROUGE-L (0.25) indicates the summary conveys the same information using substantially different vocabulary and phrasing. This is common in abstractive summarization where the model paraphrases rather than copies from the source/reference.",
+      "wrong": [
+        "BERTScore using contextual embeddings from models like RoBERTa captures deep semantic similarity, not superficial features. It has been validated extensively against human judgments and correlates better with human evaluation than n-gram-based metrics. A high BERTScore with human-approved summaries is a genuine indicator of quality, not a failure of the metric. The paraphrase detection capability of BERT-based embeddings is well-established.",
+        "The metrics do not 'contradict' each other -- they measure DIFFERENT things. ROUGE-L measures lexical overlap, BERTScore measures semantic similarity. A summary can be semantically similar with low lexical overlap (paraphrasing). This is not a contradiction; it is expected behavior when the two metrics measure orthogonal aspects of quality. Both metrics provide useful, complementary information."
+      ]
+    }
+  },
+  {
+    "id": "a009",
+    "rank": "A",
+    "week": 7,
+    "category": "Optimization Theory",
+    "question": "You train a large neural network and observe that the training loss curve has a long 'plateau' phase early in training where the loss barely decreases, followed by a sudden sharp drop. This pattern occurs reproducibly. What explains this behavior?",
+    "choices": [
+      "A) The optimizer is stuck in a local minimum during the plateau and eventually escapes due to stochastic noise",
+      "B) The network undergoes a 'grokking'-like phase transition where it initially memorizes superficial patterns (plateau) and then suddenly discovers the generalizing algorithm (sharp drop)",
+      "C) During the plateau, the network is traversing a saddle point or slowly aligning its internal representations (a 'loss barrier' or 'critical period'); the sharp drop occurs when the network crosses a threshold in its representation that allows rapid loss decrease -- this is related to the concept of 'loss landscape barriers' and phase transitions in neural network training"
+    ],
+    "correct": 2,
+    "explanation": {
+      "correct": "The plateau-then-drop pattern is associated with the network slowly navigating a saddle point, loss barrier, or 'phase transition' in representation space. During the plateau, internal representations are gradually reorganizing -- for example, features may be rotating into alignment or the network may be navigating a narrow valley in the loss landscape. The sharp drop occurs when the representations cross a critical threshold, enabling a cascade of rapid improvement. This is distinct from a local minimum (which would not have an escape path via gradient descent) and from grokking (which involves a specific memorization-to-generalization transition on specific tasks with specific conditions).",
+      "wrong": [
+        "True local minima (not saddle points) in the loss surface of overparameterized neural networks are generally 'good' minima (low loss) due to the high-dimensional landscape. The plateau is more likely a saddle region or flat valley, not a local minimum. Moreover, the reproducibility of the pattern (occurs with different seeds) suggests it is a structural feature of the loss landscape, not a stochastic escape event. Stochastic noise helps escape saddle points, but the plateau duration is determined by landscape geometry, not noise magnitude.",
+        "Grokking (Power et al., 2022) is a specific phenomenon where a model achieves perfect TRAINING accuracy early but generalization emerges much later. The described pattern is about TRAINING LOSS having a plateau, which is different -- grokking involves a plateau in VALIDATION accuracy while training accuracy is already perfect. The two phenomena have different signatures and likely different mechanisms. Additionally, grokking was observed primarily in small algorithmic tasks, not universally."
+      ]
+    }
+  },
+  {
+    "id": "s001",
+    "rank": "S",
+    "week": 7,
+    "category": "Scaling Laws",
+    "question": "According to neural scaling laws (Kaplan et al., 2020), the test loss of a language model follows a power law with respect to model size N, dataset size D, and compute C. You have a fixed compute budget and want to minimize test loss. How should you allocate compute between model size and training tokens?",
+    "choices": [
+      "A) Chinchilla-optimal scaling (Hoffmann et al., 2022) showed that model size and training tokens should be scaled EQUALLY -- double the compute means double the parameters AND double the tokens. Previous practice (Kaplan) significantly undertrained large models",
+      "B) Kaplan et al.'s original recommendation is correct: most compute should go to increasing model size, as larger models are more sample-efficient and learn more per token",
+      "C) Most compute should go to training tokens (longer training on smaller models), because large models are wasteful due to diminishing returns on parameter count"
+    ],
+    "correct": 0,
+    "explanation": {
+      "correct": "Hoffmann et al. (2022) (Chinchilla paper) demonstrated that Kaplan et al.'s scaling laws underestimated the importance of training data. Their experiments showed that for compute-optimal training, model size and training tokens should scale roughly equally with compute budget. Specifically, if you 10x your compute, you should roughly 3.16x your parameters AND 3.16x your tokens (since 3.16 * 3.16 ~ 10). Chinchilla (70B parameters, 1.4T tokens) outperformed the much larger Gopher (280B, 300B tokens) despite using similar compute, because Gopher was over-parameterized and under-trained.",
+      "wrong": [
+        "Kaplan et al.'s original recommendation was to scale model size faster than data, arguing that large models are more sample-efficient. While this is true in isolation, Hoffmann et al. showed this leads to models that are larger than necessary for the given compute budget. The original scaling laws had a systematic bias in their experimental design that overestimated the returns to model size. The Chinchilla result has been widely validated and is now the standard for compute-optimal training.",
+        "Scaling tokens faster than parameters is also suboptimal. While training longer is cheaper per FLOP than adding parameters, the power law for data has diminishing returns just like the one for model size. The compute-optimal frontier requires balanced scaling. Training a small model for too long leads to diminishing returns as the model's capacity limits how much it can extract from additional data."
+      ]
+    }
+  },
+  {
+    "id": "s002",
+    "rank": "S",
+    "week": 7,
+    "category": "Theoretical Traps",
+    "question": "The Universal Approximation Theorem states that a sufficiently wide single-hidden-layer neural network can approximate any continuous function on a compact domain to arbitrary accuracy. A colleague concludes that deep networks are unnecessary -- you can always use a single wide layer. What is the flaw in this reasoning?",
+    "choices": [
+      "A) The theorem requires the width to grow EXPONENTIALLY with the dimensionality of the function being approximated. Deep networks can represent the same functions with POLYNOMIALLY many parameters through hierarchical composition. Depth provides exponential efficiency gains over width for many function classes",
+      "B) The theorem only applies to continuous functions, and real-world data involves discontinuities that require deep networks",
+      "C) The theorem is purely theoretical and does not account for the optimization difficulty of training wide networks"
+    ],
+    "correct": 0,
+    "explanation": {
+      "correct": "The Universal Approximation Theorem guarantees EXISTENCE of a wide-enough network but says nothing about the required width. For many function classes (e.g., compositions of simple functions, hierarchical features), the required width of a single-layer network grows EXPONENTIALLY with the input dimension or function complexity. Deep networks, through hierarchical composition, can represent these same functions with polynomially many parameters. For example, a polynomial of degree d in n variables requires O(n^d) terms in a single layer but O(d * n) in a deep network with appropriate structure. This exponential gap in efficiency is the fundamental theoretical justification for depth.",
+      "wrong": [
+        "While the continuity assumption is a limitation, it is not the MAIN flaw in the colleague's reasoning. Most functions encountered in practice can be approximated by continuous functions (even discontinuities can be approximated to any precision with steep continuous transitions). The real issue is efficiency: the theorem says approximation IS POSSIBLE but the cost (number of neurons) can be astronomically large for shallow networks. Deep networks are necessary for practical efficiency, not because of discontinuities.",
+        "While optimization difficulty is a valid practical concern, it is not the fundamental theoretical flaw. The colleague's argument is about representational capacity ('you CAN always use a single wide layer'), and the correct response is about representational EFFICIENCY (you can, but the required width may be intractable). The optimization argument is secondary: even if you COULD train the wide network, it would need exponentially more parameters than a deep alternative, making it computationally infeasible."
+      ]
+    }
+  },
+  {
+    "id": "s003",
+    "rank": "S",
+    "week": 8,
+    "category": "Adversarial Robustness",
+    "question": "You adversarially train a ResNet-50 against L-infinity PGD attacks (epsilon=8/255) on CIFAR-10. The model achieves 85% clean accuracy and 50% robust accuracy. You then evaluate against an L2-bounded attack (epsilon=0.5). What do you expect?",
+    "choices": [
+      "A) The model is also robust against L2 attacks because L-infinity robustness implies L2 robustness (L-infinity is a stricter constraint)",
+      "B) Robustness transfers partially but imperfectly. L-infinity adversarial training provides some L2 robustness, but the model is not optimally robust against L2 because the threat models are geometrically different: L-infinity allows perturbations spread across all pixels while L2 allows larger perturbations concentrated on fewer pixels",
+      "C) The model has zero L2 robustness because adversarial training is threat-model specific and provides no transfer"
+    ],
+    "correct": 1,
+    "explanation": {
+      "correct": "L-infinity and L2 threat models are related but distinct. An L-infinity ball of radius epsilon in d dimensions is contained within an L2 ball of radius epsilon*sqrt(d), so L-infinity perturbations are a SUBSET of certain L2 perturbations. L-infinity adversarial training does confer some L2 robustness, but it is not optimal because: (1) the learned features are tuned for uniform pixel-wise perturbations (L-infinity geometry), not spatially concentrated perturbations (L2 geometry); (2) the effective robustness radius differs between norms. Empirically, L-infinity robust models have moderate but suboptimal L2 robustness, and vice versa. The transfer is partial, not complete or zero.",
+      "wrong": [
+        "While it is true that an L-infinity ball of radius epsilon is contained within the L2 ball of radius epsilon*sqrt(d), this does NOT mean L-infinity robustness implies L2 robustness at a given epsilon. The L2 attack can use perturbations OUTSIDE the L-infinity ball (concentrated perturbations that change a few pixels by a lot). The threat model geometry matters: L-infinity robustness at epsilon=8/255 does not guarantee L2 robustness at epsilon=0.5, because the L2 attack explores different perturbation directions.",
+        "Zero transfer is an overstatement. Adversarial training teaches the model to be robust to input perturbations in general, not just the specific norm used during training. The learned robust features (smoothed, less texture-dependent) transfer partially across threat models. Empirically, L-infinity adversarial training typically provides 20-60% of the L2 robustness that dedicated L2 training provides. The transfer is imperfect but substantial."
+      ]
+    }
+  },
+  {
+    "id": "s004",
+    "rank": "S",
+    "week": 8,
+    "category": "Cutting-Edge Research",
+    "question": "You are training a large language model and implement Mixture of Experts (MoE) to scale the model to 1 trillion parameters while keeping the compute per token constant. The router network selects the top-2 experts (out of 64) for each token. During training, you observe that most tokens are routed to the same 3-4 experts while the remaining 60 experts are barely used. What is this problem called, and what is the standard fix?",
+    "choices": [
+      "A) This is 'expert collapse' or 'load imbalance.' The standard fix is an auxiliary load-balancing loss that penalizes uneven routing, plus techniques like adding noise to the router logits (noisy top-k gating) to encourage exploration of underused experts",
+      "B) This is 'mode collapse,' the same as in GANs. The fix is to use a separate discriminator to ensure diverse expert utilization",
+      "C) This is expected behavior -- the model has learned that 3-4 experts are most useful, and forcing balanced usage would degrade performance"
+    ],
+    "correct": 0,
+    "explanation": {
+      "correct": "Expert collapse (or load imbalance) is the primary training challenge for MoE models. The router has a rich-get-richer dynamic: experts that receive more tokens get more gradient updates, become more capable, and attract even more tokens. The standard mitigation from Switch Transformer (Fedus et al., 2021) is an auxiliary load-balancing loss: L_balance = alpha * sum(f_i * p_i) where f_i is the fraction of tokens routed to expert i and p_i is the average router probability for expert i. This encourages uniform load distribution. Additionally, noisy top-k gating (Shazeer et al., 2017) adds Gaussian noise to router logits before the top-k selection, providing exploration that prevents premature convergence to a few experts.",
+      "wrong": [
+        "While the superficial pattern resembles mode collapse in GANs (concentration on a few modes/experts), the mechanisms are different. MoE expert collapse is caused by the discrete routing mechanism creating a positive feedback loop, not by adversarial dynamics. The fix is specific to MoE: load-balancing losses and noisy gating, not discriminator networks. Drawing analogies between different ML problems is fine for intuition, but the solutions must be mechanism-specific.",
+        "This is NOT expected or desirable. MoE models are designed to distribute computation across experts so that different experts specialize in different input types. If only 3-4 out of 64 experts are used, you are wasting ~94% of the model's parameters. The model has effectively collapsed from a 1T parameter model to a ~50B parameter model (only using 4 experts), losing the entire benefit of the MoE architecture. Balanced utilization is critical for MoE to deliver its promised scaling benefits."
+      ]
+    }
+  },
+  {
+    "id": "s005",
+    "rank": "S",
+    "week": 8,
+    "category": "Theoretical Traps",
+    "question": "The double descent phenomenon shows that test error can DECREASE as model complexity increases past the interpolation threshold (where training error = 0). A colleague claims this violates the classical bias-variance tradeoff. Is this correct?",
+    "choices": [
+      "A) Yes, double descent fundamentally disproves the bias-variance tradeoff; the classical theory is wrong for modern models",
+      "B) No, double descent is consistent with bias-variance theory but reveals that variance behaves non-monotonically: it PEAKS at the interpolation threshold (where the model barely has enough capacity to fit the data) and then DECREASES in the overparameterized regime as the model finds smoother interpolating solutions. The bias-variance decomposition still holds; its components just behave non-obviously",
+      "C) No, double descent is an artifact of specific architectures (neural networks) and does not occur in classical models like polynomial regression"
+    ],
+    "correct": 1,
+    "explanation": {
+      "correct": "The classical U-shaped bias-variance tradeoff implicitly assumes that model complexity maps monotonically to variance. Double descent reveals this assumption is wrong: variance peaks sharply at the interpolation threshold and then decreases. At the threshold, the model is maximally 'stressed' -- it has just enough capacity to fit the training data, so the unique interpolating solution is highly sensitive to the specific training set (high variance). Beyond the threshold, there are MANY interpolating solutions, and the optimizer (implicitly regularized by SGD, architecture, etc.) selects smooth, low-norm solutions that have lower variance. The bias-variance DECOMPOSITION remains valid; the surprise is in the non-monotonic behavior of its components.",
+      "wrong": [
+        "Double descent does NOT disprove the bias-variance tradeoff. The bias-variance decomposition is a mathematical identity: Expected Error = Bias^2 + Variance + Noise. This is always true by definition. What double descent challenges is the HEURISTIC that 'more complexity always increases variance.' The decomposition holds; the informal tradeoff curve just has a more complex shape than the classical U-curve.",
+        "Double descent has been observed in linear regression, random features models, kernel machines, decision trees, and other classical models -- not just neural networks. Belkin et al. (2019) demonstrated it in simple settings. The phenomenon is fundamental to overparameterization and interpolation, not architecture-specific. Even k-nearest neighbors exhibits a version of it. The universality of double descent across model classes is one of its most important properties."
+      ]
+    }
+  }
+]

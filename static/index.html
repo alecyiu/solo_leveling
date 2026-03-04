@@ -1,0 +1,1551 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Solo Leveling — ML Hunter Academy</title>
+<style>
+/* ============================================================
+   RESET & BASE
+   ============================================================ */
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+@font-face {
+  font-family: 'SystemFont';
+  src: local('Segoe UI'), local('Roboto'), local('Helvetica Neue'), local('Arial');
+}
+
+:root {
+  --bg:           #0A0A1A;
+  --panel:        rgba(13, 27, 62, 0.95);
+  --panel-border: rgba(65, 105, 225, 0.45);
+  --glow:         rgba(65, 105, 225, 0.4);
+  --glow-strong:  rgba(65, 105, 225, 0.7);
+  --text:         #C8D6E5;
+  --text-bright:  #E8EFF7;
+  --text-dim:     #5E6B80;
+  --accent:       #4169E1;
+  --accent-light: #6B8BF5;
+  --correct:      #00E676;
+  --wrong:        #FF1744;
+  --rank-e: #808080;
+  --rank-d: #4CAF50;
+  --rank-c: #2196F3;
+  --rank-b: #9C27B0;
+  --rank-a: #FF9800;
+  --rank-s: #FF1744;
+}
+
+html, body {
+  height: 100%;
+  font-family: 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  overflow: hidden;
+}
+
+/* Scanline overlay for the entire page */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0,0,0,0.08) 2px,
+    rgba(0,0,0,0.08) 4px
+  );
+  pointer-events: none;
+  z-index: 9999;
+}
+
+/* ============================================================
+   LAYOUT — TWO-COLUMN SPLIT
+   ============================================================ */
+.app {
+  display: flex;
+  height: 100vh;
+  width: 100vw;
+}
+
+.quest-log {
+  flex: 1 1 60%;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  border-right: 1px solid var(--panel-border);
+}
+
+.hunter-status {
+  flex: 0 0 380px;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  padding: 24px 20px;
+  background: linear-gradient(180deg, rgba(10,10,30,0.98) 0%, rgba(8,8,24,0.99) 100%);
+}
+
+/* ============================================================
+   QUEST LOG HEADER
+   ============================================================ */
+.quest-header {
+  padding: 16px 24px;
+  border-bottom: 1px solid var(--panel-border);
+  background: var(--panel);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.quest-header h1 {
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--accent-light);
+}
+
+.quest-header .system-tag {
+  color: var(--accent);
+  font-weight: 700;
+  margin-right: 4px;
+}
+
+/* ============================================================
+   QUEST SCROLL AREA
+   ============================================================ */
+.quest-scroll {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  scroll-behavior: smooth;
+}
+
+.quest-scroll::-webkit-scrollbar { width: 6px; }
+.quest-scroll::-webkit-scrollbar-track { background: transparent; }
+.quest-scroll::-webkit-scrollbar-thumb { background: var(--panel-border); border-radius: 3px; }
+
+/* ============================================================
+   SYSTEM NOTIFICATION CARD (Question)
+   ============================================================ */
+.system-card {
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+  box-shadow: 0 0 20px var(--glow), inset 0 0 30px rgba(0,0,0,0.3);
+  padding: 0;
+  position: relative;
+  animation: cardAppear 0.5s ease-out;
+}
+
+@keyframes cardAppear {
+  from { opacity: 0; transform: translateY(30px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.system-card::before {
+  content: '';
+  position: absolute;
+  top: -1px; left: -1px; right: -1px;
+  height: 3px;
+  background: linear-gradient(90deg, transparent, var(--accent), transparent);
+}
+
+.card-header {
+  padding: 12px 20px;
+  border-bottom: 1px solid rgba(65,105,225,0.15);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.card-header .tag {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--accent-light);
+}
+
+.card-header .rank-tag {
+  font-size: 10px;
+  padding: 2px 10px;
+  border: 1px solid;
+  letter-spacing: 1px;
+  font-weight: 600;
+}
+
+.card-body {
+  padding: 20px;
+}
+
+.card-body .question-text {
+  font-size: 15px;
+  line-height: 1.7;
+  color: var(--text-bright);
+  margin-bottom: 20px;
+}
+
+/* ============================================================
+   ANSWER BUTTONS
+   ============================================================ */
+.choices {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.choice-btn {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  padding: 12px 18px;
+  background: rgba(10, 15, 40, 0.7);
+  border: 1px solid rgba(65, 105, 225, 0.25);
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.5;
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: inherit;
+}
+
+.choice-btn:hover:not(:disabled) {
+  border-color: var(--accent);
+  background: rgba(65, 105, 225, 0.1);
+  box-shadow: 0 0 15px var(--glow);
+  color: var(--text-bright);
+}
+
+.choice-btn .choice-label {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border: 1px solid var(--panel-border);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--accent-light);
+  flex-shrink: 0;
+}
+
+.choice-btn:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+/* Correct */
+.choice-btn.correct {
+  border-color: var(--correct);
+  background: rgba(0, 230, 118, 0.08);
+  color: var(--correct);
+  opacity: 1 !important;
+  animation: correctPulse 1s ease-in-out;
+}
+
+@keyframes correctPulse {
+  0%   { box-shadow: 0 0 0 rgba(0,230,118,0); }
+  30%  { box-shadow: 0 0 25px rgba(0,230,118,0.5); }
+  100% { box-shadow: 0 0 8px rgba(0,230,118,0.2); }
+}
+
+.choice-btn.correct .choice-label {
+  border-color: var(--correct);
+  color: var(--correct);
+}
+
+/* Wrong */
+.choice-btn.wrong {
+  border-color: var(--wrong);
+  background: rgba(255, 23, 68, 0.08);
+  color: var(--wrong);
+  opacity: 1 !important;
+  animation: wrongFlash 0.6s ease-out;
+}
+
+@keyframes wrongFlash {
+  0%   { box-shadow: 0 0 30px rgba(255,23,68,0.6); background: rgba(255,23,68,0.2); }
+  100% { box-shadow: none; background: rgba(255,23,68,0.08); }
+}
+
+.choice-btn.wrong .choice-label {
+  border-color: var(--wrong);
+  color: var(--wrong);
+}
+
+/* ============================================================
+   EXPLANATION BOX
+   ============================================================ */
+.explanation {
+  margin-top: 16px;
+  padding: 14px 18px;
+  background: rgba(0, 0, 0, 0.35);
+  border-left: 3px solid var(--accent);
+  font-size: 13px;
+  line-height: 1.65;
+  color: var(--text);
+  animation: fadeIn 0.4s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.explanation .exp-label {
+  font-size: 10px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--accent-light);
+  margin-bottom: 6px;
+  font-weight: 700;
+}
+
+/* ============================================================
+   NEXT QUEST BUTTON
+   ============================================================ */
+.next-quest-btn {
+  margin-top: 16px;
+  padding: 12px 28px;
+  background: transparent;
+  border: 1px solid var(--accent);
+  color: var(--accent-light);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  font-family: inherit;
+  align-self: flex-end;
+}
+
+.next-quest-btn:hover {
+  background: rgba(65, 105, 225, 0.15);
+  box-shadow: 0 0 20px var(--glow);
+  color: #fff;
+}
+
+/* ============================================================
+   EMPTY STATE
+   ============================================================ */
+.empty-state {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  opacity: 0.5;
+}
+
+.empty-state .icon {
+  font-size: 48px;
+  color: var(--accent);
+  opacity: 0.4;
+}
+
+.empty-state p {
+  font-size: 14px;
+  letter-spacing: 1px;
+}
+
+/* ============================================================
+   HUNTER STATUS — RIGHT SIDEBAR
+   ============================================================ */
+.hunter-status::-webkit-scrollbar { width: 4px; }
+.hunter-status::-webkit-scrollbar-track { background: transparent; }
+.hunter-status::-webkit-scrollbar-thumb { background: var(--panel-border); border-radius: 2px; }
+
+.status-section {
+  margin-bottom: 24px;
+}
+
+.status-section-title {
+  font-size: 10px;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  margin-bottom: 12px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid rgba(65,105,225,0.12);
+}
+
+/* Rank Badge */
+.rank-display {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 20px 0;
+}
+
+.rank-badge {
+  width: 90px;
+  height: 90px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 42px;
+  font-weight: 800;
+  border: 3px solid;
+  position: relative;
+  transition: all 0.5s ease;
+}
+
+.rank-badge::after {
+  content: '';
+  position: absolute;
+  inset: -6px;
+  border: 1px solid;
+  opacity: 0.3;
+}
+
+.rank-badge.rank-E { color: var(--rank-e); border-color: var(--rank-e); }
+.rank-badge.rank-E::after { border-color: var(--rank-e); }
+.rank-badge.rank-D { color: var(--rank-d); border-color: var(--rank-d); }
+.rank-badge.rank-D::after { border-color: var(--rank-d); }
+.rank-badge.rank-C { color: var(--rank-c); border-color: var(--rank-c); }
+.rank-badge.rank-C::after { border-color: var(--rank-c); }
+.rank-badge.rank-B { color: var(--rank-b); border-color: var(--rank-b); }
+.rank-badge.rank-B::after { border-color: var(--rank-b); }
+.rank-badge.rank-A { color: var(--rank-a); border-color: var(--rank-a); }
+.rank-badge.rank-A::after { border-color: var(--rank-a); }
+.rank-badge.rank-S { color: var(--rank-s); border-color: var(--rank-s); }
+.rank-badge.rank-S::after { border-color: var(--rank-s); }
+
+.rank-title {
+  font-size: 13px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+
+/* XP Bar */
+.xp-section {
+  margin-top: 4px;
+}
+
+.xp-info {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  margin-bottom: 6px;
+  color: var(--text-dim);
+}
+
+.xp-info .level-text {
+  color: var(--accent-light);
+  font-weight: 600;
+}
+
+.xp-bar-track {
+  width: 100%;
+  height: 8px;
+  background: rgba(0,0,0,0.5);
+  border: 1px solid rgba(65,105,225,0.15);
+  overflow: hidden;
+  position: relative;
+}
+
+.xp-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent), var(--accent-light));
+  transition: width 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  position: relative;
+}
+
+.xp-bar-fill::after {
+  content: '';
+  position: absolute;
+  top: 0; right: 0;
+  width: 20px;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3));
+  animation: xpShimmer 1.5s ease-in-out infinite;
+}
+
+@keyframes xpShimmer {
+  0%, 100% { opacity: 0; }
+  50%      { opacity: 1; }
+}
+
+/* Stats Grid */
+.stats-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.stat-box {
+  background: rgba(10, 15, 40, 0.6);
+  border: 1px solid rgba(65,105,225,0.12);
+  padding: 12px;
+  text-align: center;
+}
+
+.stat-value {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text-bright);
+  margin-bottom: 2px;
+}
+
+.stat-label {
+  font-size: 9px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+/* ============================================================
+   JOURNEY MAP (8-week)
+   ============================================================ */
+.journey-map {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+
+.week-node {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 10px 4px;
+  background: rgba(10,15,40,0.5);
+  border: 1px solid rgba(65,105,225,0.1);
+  transition: all 0.3s ease;
+}
+
+.week-node.active {
+  border-color: var(--accent);
+  box-shadow: 0 0 10px var(--glow);
+}
+
+.week-node.completed {
+  border-color: var(--correct);
+}
+
+.week-node .week-num {
+  font-size: 9px;
+  letter-spacing: 1px;
+  color: var(--text-dim);
+  text-transform: uppercase;
+}
+
+.week-node .week-rank {
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.week-node.completed .week-rank { color: var(--correct); }
+.week-node.active .week-rank { color: var(--accent-light); }
+.week-node:not(.completed):not(.active) .week-rank { color: var(--text-dim); opacity: 0.4; }
+
+/* ============================================================
+   FOCUS AREA INPUT
+   ============================================================ */
+.focus-input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.focus-input {
+  width: 100%;
+  padding: 10px 14px;
+  background: rgba(10, 15, 40, 0.7);
+  border: 1px solid rgba(65,105,225,0.2);
+  color: var(--text-bright);
+  font-size: 13px;
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.focus-input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 10px var(--glow);
+}
+
+.focus-input::placeholder {
+  color: var(--text-dim);
+}
+
+.generate-btn {
+  padding: 10px 18px;
+  background: transparent;
+  border: 1px solid var(--accent);
+  color: var(--accent-light);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  font-family: inherit;
+  position: relative;
+  overflow: hidden;
+}
+
+.generate-btn:hover:not(:disabled) {
+  background: rgba(65,105,225,0.15);
+  box-shadow: 0 0 20px var(--glow);
+}
+
+.generate-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.generate-btn .spinner {
+  display: none;
+  width: 14px;
+  height: 14px;
+  border: 2px solid transparent;
+  border-top-color: var(--accent-light);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  margin-right: 8px;
+}
+
+.generate-btn.loading .spinner { display: inline-block; }
+.generate-btn.loading .btn-text { opacity: 0.7; }
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ============================================================
+   TOAST NOTIFICATION
+   ============================================================ */
+.toast-container {
+  position: fixed;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10000;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  pointer-events: none;
+}
+
+.toast {
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+  box-shadow: 0 0 25px var(--glow);
+  padding: 14px 28px;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  color: var(--accent-light);
+  animation: toastIn 0.4s ease, toastOut 0.4s ease 2.6s forwards;
+  white-space: nowrap;
+}
+
+.toast.xp-toast {
+  color: var(--correct);
+  border-color: rgba(0,230,118,0.3);
+}
+
+.toast.level-toast {
+  color: var(--accent-light);
+  border-color: var(--accent);
+  font-size: 15px;
+}
+
+@keyframes toastIn {
+  from { opacity: 0; transform: translateY(-20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes toastOut {
+  from { opacity: 1; transform: translateY(0); }
+  to   { opacity: 0; transform: translateY(-20px); }
+}
+
+/* ============================================================
+   RANK-UP OVERLAY
+   ============================================================ */
+.rankup-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50000;
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.rankup-overlay.active {
+  display: flex;
+}
+
+.rankup-bg {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.92);
+  animation: bgFadeIn 0.6s ease;
+}
+
+@keyframes bgFadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.rankup-content {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+  animation: rankupContentIn 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.3s both;
+}
+
+@keyframes rankupContentIn {
+  from { opacity: 0; transform: scale(0.7); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+.rankup-system-tag {
+  font-size: 14px;
+  letter-spacing: 6px;
+  text-transform: uppercase;
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.rankup-title {
+  font-size: 52px;
+  font-weight: 900;
+  letter-spacing: 8px;
+  text-transform: uppercase;
+  animation: rankupGlow 2s ease-in-out infinite alternate;
+}
+
+@keyframes rankupGlow {
+  from { text-shadow: 0 0 20px var(--glow), 0 0 40px var(--glow); }
+  to   { text-shadow: 0 0 40px var(--glow-strong), 0 0 80px var(--glow); }
+}
+
+.rankup-badge {
+  width: 140px;
+  height: 140px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 72px;
+  font-weight: 900;
+  border: 4px solid;
+  position: relative;
+  animation: badgeScaleIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) 0.8s both;
+}
+
+.rankup-badge::after {
+  content: '';
+  position: absolute;
+  inset: -10px;
+  border: 2px solid;
+  opacity: 0.3;
+  animation: badgeOuterPulse 2s ease-in-out infinite;
+}
+
+@keyframes badgeScaleIn {
+  from { opacity: 0; transform: scale(0.3) rotate(-10deg); }
+  to   { opacity: 1; transform: scale(1) rotate(0deg); }
+}
+
+@keyframes badgeOuterPulse {
+  0%, 100% { transform: scale(1); opacity: 0.3; }
+  50%      { transform: scale(1.08); opacity: 0.6; }
+}
+
+.rankup-subtitle {
+  font-size: 16px;
+  letter-spacing: 2px;
+  color: var(--text);
+  animation: fadeIn 0.5s ease 1.2s both;
+}
+
+.rankup-dismiss {
+  font-size: 11px;
+  letter-spacing: 2px;
+  color: var(--text-dim);
+  margin-top: 30px;
+  animation: fadeIn 0.5s ease 1.8s both;
+}
+
+/* Particles */
+.rankup-particles {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  z-index: 1;
+}
+
+.particle {
+  position: absolute;
+  width: 2px;
+  height: 2px;
+  background: var(--accent-light);
+  border-radius: 50%;
+  animation: particleFloat linear infinite;
+}
+
+@keyframes particleFloat {
+  0% {
+    opacity: 0;
+    transform: translate(0, 0) scale(0);
+  }
+  10% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  90% {
+    opacity: 0.5;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(var(--tx), var(--ty)) scale(0);
+  }
+}
+
+/* Converging lines */
+.rankup-lines {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  overflow: hidden;
+}
+
+.converge-line {
+  position: absolute;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--accent-light), transparent);
+  opacity: 0.4;
+  animation: lineConverge 1.5s ease-out forwards;
+}
+
+@keyframes lineConverge {
+  from { opacity: 0; }
+  50%  { opacity: 0.6; }
+  to   { opacity: 0; width: 0; }
+}
+
+/* ============================================================
+   START BUTTON (shown before first quest)
+   ============================================================ */
+.start-overlay {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  flex: 1;
+  padding: 40px;
+}
+
+.start-overlay .title-system {
+  font-size: 11px;
+  letter-spacing: 4px;
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.start-overlay h2 {
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: var(--text-bright);
+  text-align: center;
+}
+
+.start-overlay p {
+  font-size: 13px;
+  color: var(--text-dim);
+  max-width: 380px;
+  text-align: center;
+  line-height: 1.6;
+}
+
+.start-btn {
+  margin-top: 10px;
+  padding: 14px 44px;
+  background: transparent;
+  border: 2px solid var(--accent);
+  color: var(--accent-light);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 4px;
+  text-transform: uppercase;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.3s ease;
+  position: relative;
+}
+
+.start-btn:hover {
+  background: rgba(65,105,225,0.15);
+  box-shadow: 0 0 30px var(--glow), 0 0 60px rgba(65,105,225,0.15);
+  color: #fff;
+}
+
+/* ============================================================
+   RESPONSIVE
+   ============================================================ */
+@media (max-width: 900px) {
+  .app {
+    flex-direction: column;
+  }
+  .quest-log {
+    flex: 1 1 auto;
+    border-right: none;
+    border-bottom: 1px solid var(--panel-border);
+    min-height: 55vh;
+  }
+  .hunter-status {
+    flex: 0 0 auto;
+    max-height: 45vh;
+    overflow-y: auto;
+  }
+}
+
+@media (max-width: 600px) {
+  .quest-scroll { padding: 14px; }
+  .card-body { padding: 14px; }
+  .hunter-status { padding: 16px 14px; }
+  .rank-badge { width: 70px; height: 70px; font-size: 32px; }
+  .stats-grid { grid-template-columns: 1fr 1fr; gap: 6px; }
+  .stat-box { padding: 8px; }
+  .stat-value { font-size: 18px; }
+  .journey-map { grid-template-columns: repeat(4, 1fr); gap: 4px; }
+}
+
+/* ============================================================
+   UTILITY
+   ============================================================ */
+.hidden { display: none !important; }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <!-- ======================== LEFT: QUEST LOG ======================== -->
+  <div class="quest-log">
+    <div class="quest-header">
+      <h1><span class="system-tag">[SYSTEM]</span> Daily Quest Log</h1>
+    </div>
+
+    <div class="quest-scroll" id="questScroll">
+      <!-- Start overlay shown initially -->
+      <div class="start-overlay" id="startOverlay">
+        <div class="title-system">[SYSTEM]</div>
+        <h2>ML Hunter Academy</h2>
+        <p>You have been chosen as a Player. Complete machine learning quests to increase your rank. Only the strongest hunters survive.</p>
+        <button class="start-btn" id="startBtn">Begin Hunt</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======================== RIGHT: HUNTER STATUS ======================== -->
+  <div class="hunter-status">
+    <!-- Rank Display -->
+    <div class="status-section">
+      <div class="status-section-title">Hunter Rank</div>
+      <div class="rank-display">
+        <div class="rank-badge rank-E" id="rankBadge">E</div>
+        <div class="rank-title" id="rankTitle">E-Rank Hunter</div>
+      </div>
+    </div>
+
+    <!-- XP Bar -->
+    <div class="status-section xp-section">
+      <div class="status-section-title">Experience</div>
+      <div class="xp-info">
+        <span class="level-text" id="levelText">Level 1</span>
+        <span id="xpText">0 / 100 XP</span>
+      </div>
+      <div class="xp-bar-track">
+        <div class="xp-bar-fill" id="xpBarFill" style="width: 0%"></div>
+      </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="status-section">
+      <div class="status-section-title">Combat Stats</div>
+      <div class="stats-grid">
+        <div class="stat-box">
+          <div class="stat-value" id="statAnswered">0</div>
+          <div class="stat-label">Answered</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-value" id="statAccuracy">0%</div>
+          <div class="stat-label">Accuracy</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-value" id="statStreak">0</div>
+          <div class="stat-label">Streak</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-value" id="statBestStreak">0</div>
+          <div class="stat-label">Best Streak</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Journey Map -->
+    <div class="status-section">
+      <div class="status-section-title">8-Week Journey</div>
+      <div class="journey-map" id="journeyMap"></div>
+    </div>
+
+    <!-- Focus Area -->
+    <div class="status-section">
+      <div class="status-section-title">Custom Quests</div>
+      <div class="focus-input-group">
+        <input type="text" class="focus-input" id="focusInput" placeholder="e.g. transformers, CNNs, RL...">
+        <button class="generate-btn" id="generateBtn">
+          <span class="spinner"></span>
+          <span class="btn-text">Generate Quests</span>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Toast Container -->
+<div class="toast-container" id="toastContainer"></div>
+
+<!-- Rank-Up Overlay -->
+<div class="rankup-overlay" id="rankupOverlay">
+  <div class="rankup-bg"></div>
+  <div class="rankup-particles" id="rankupParticles"></div>
+  <div class="rankup-lines" id="rankupLines"></div>
+  <div class="rankup-content">
+    <div class="rankup-system-tag">[SYSTEM]</div>
+    <div class="rankup-title" id="rankupTitle">RANK UP</div>
+    <div class="rankup-badge" id="rankupBadge">D</div>
+    <div class="rankup-subtitle" id="rankupSubtitle">You have been promoted to D-Rank Hunter</div>
+    <div class="rankup-dismiss">Click anywhere to continue</div>
+  </div>
+</div>
+
+<script>
+/* =================================================================
+   SOLO LEVELING ML QUIZ — GAME ENGINE
+   ================================================================= */
+(function() {
+  'use strict';
+
+  // ── Constants ──────────────────────────────────────────────────
+  const RANKS = ['E', 'D', 'C', 'B', 'A', 'S'];
+  const RANK_COLORS = { E:'#808080', D:'#4CAF50', C:'#2196F3', B:'#9C27B0', A:'#FF9800', S:'#FF1744' };
+  const RANK_XP     = { E:10, D:20, C:35, B:50, A:75, S:100 };
+  const LEVELS_PER_RANK = 10;
+  const XP_PER_LEVEL = 100;
+
+  const WEEK_RANKS = ['E', 'E', 'D', 'C', 'C', 'B', 'A', 'S'];
+
+  // ── State ──────────────────────────────────────────────────────
+  let state = loadState();
+  let questionPool = [];
+  let currentQuestion = null;
+  let questStarted = false;
+
+  function defaultState() {
+    return {
+      rank: 'E',
+      level: 1,
+      xp: 0,
+      streak: 0,
+      bestStreak: 0,
+      answeredIds: [],
+      correctCount: 0,
+      totalAnswered: 0,
+      weekProgress: [false, false, false, false, false, false, false, false],
+      focusAreas: []
+    };
+  }
+
+  function loadState() {
+    try {
+      const saved = localStorage.getItem('soloLevelingML');
+      if (saved) return { ...defaultState(), ...JSON.parse(saved) };
+    } catch(e) { /* ignore */ }
+    return defaultState();
+  }
+
+  function saveState() {
+    localStorage.setItem('soloLevelingML', JSON.stringify(state));
+  }
+
+  // ── DOM refs ───────────────────────────────────────────────────
+  const $scroll       = document.getElementById('questScroll');
+  const $startOverlay = document.getElementById('startOverlay');
+  const $startBtn     = document.getElementById('startBtn');
+  const $rankBadge    = document.getElementById('rankBadge');
+  const $rankTitle    = document.getElementById('rankTitle');
+  const $levelText    = document.getElementById('levelText');
+  const $xpText       = document.getElementById('xpText');
+  const $xpFill       = document.getElementById('xpBarFill');
+  const $statAns      = document.getElementById('statAnswered');
+  const $statAcc      = document.getElementById('statAccuracy');
+  const $statStreak   = document.getElementById('statStreak');
+  const $statBest     = document.getElementById('statBestStreak');
+  const $journeyMap   = document.getElementById('journeyMap');
+  const $focusInput   = document.getElementById('focusInput');
+  const $generateBtn  = document.getElementById('generateBtn');
+  const $toastC       = document.getElementById('toastContainer');
+  const $rankupOv     = document.getElementById('rankupOverlay');
+  const $rankupBadge  = document.getElementById('rankupBadge');
+  const $rankupSub    = document.getElementById('rankupSubtitle');
+  const $rankupPart   = document.getElementById('rankupParticles');
+  const $rankupLines  = document.getElementById('rankupLines');
+
+  // ── Init ───────────────────────────────────────────────────────
+  renderSidebar();
+  renderJourney();
+
+  // If user had progress, skip start screen
+  if (state.totalAnswered > 0) {
+    questStarted = true;
+    $startOverlay.remove();
+    fetchQuestions().then(() => showNextQuestion());
+  }
+
+  // ── Event bindings ─────────────────────────────────────────────
+  $startBtn.addEventListener('click', () => {
+    questStarted = true;
+    $startOverlay.remove();
+    fetchQuestions().then(() => showNextQuestion());
+  });
+
+  $generateBtn.addEventListener('click', generateCustomQuests);
+
+  $rankupOv.addEventListener('click', () => {
+    $rankupOv.classList.remove('active');
+    $rankupPart.innerHTML = '';
+    $rankupLines.innerHTML = '';
+  });
+
+  // ── Fetch questions from API ───────────────────────────────────
+  async function fetchQuestions() {
+    try {
+      const res = await fetch('/api/questions');
+      const data = await res.json();
+      // Merge, avoid duplicates by id
+      const existingIds = new Set(questionPool.map(q => q.id));
+      for (const q of data) {
+        if (!existingIds.has(q.id)) {
+          questionPool.push(q);
+          existingIds.add(q.id);
+        }
+      }
+    } catch(e) {
+      console.error('Failed to fetch questions:', e);
+    }
+  }
+
+  // ── Generate custom quests ─────────────────────────────────────
+  async function generateCustomQuests() {
+    const focus = $focusInput.value.trim();
+    if (!focus) return;
+
+    $generateBtn.disabled = true;
+    $generateBtn.classList.add('loading');
+
+    try {
+      const res = await fetch('/api/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          focus_area: focus,
+          rank: state.rank,
+          count: 5
+        })
+      });
+      const data = await res.json();
+      const existingIds = new Set(questionPool.map(q => q.id));
+      let added = 0;
+      for (const q of data) {
+        if (!existingIds.has(q.id)) {
+          questionPool.push(q);
+          existingIds.add(q.id);
+          added++;
+        }
+      }
+      showToast(`+${added} custom quests generated`, 'level-toast');
+      if (!state.focusAreas.includes(focus)) {
+        state.focusAreas.push(focus);
+        saveState();
+      }
+      $focusInput.value = '';
+    } catch(e) {
+      console.error('Failed to generate quests:', e);
+      showToast('Quest generation failed', 'xp-toast');
+    } finally {
+      $generateBtn.disabled = false;
+      $generateBtn.classList.remove('loading');
+    }
+  }
+
+  // ── Question selection logic ───────────────────────────────────
+  function selectQuestion() {
+    const currentIdx = RANKS.indexOf(state.rank);
+    const unanswered = questionPool.filter(q => !state.answeredIds.includes(q.id));
+
+    if (unanswered.length === 0) return null;
+
+    // Bucket by rank relationship
+    const sameBucket  = unanswered.filter(q => q.rank === state.rank);
+    const higherBucket = unanswered.filter(q => RANKS.indexOf(q.rank) === currentIdx + 1);
+    const lowerBucket  = unanswered.filter(q => RANKS.indexOf(q.rank) === currentIdx - 1);
+
+    // Weighted random selection: 70% current, 20% higher, 10% lower
+    const roll = Math.random();
+    let bucket;
+    if (roll < 0.7 && sameBucket.length > 0) {
+      bucket = sameBucket;
+    } else if (roll < 0.9 && higherBucket.length > 0) {
+      bucket = higherBucket;
+    } else if (lowerBucket.length > 0) {
+      bucket = lowerBucket;
+    } else {
+      // Fallback to any unanswered
+      bucket = unanswered;
+    }
+
+    return bucket[Math.floor(Math.random() * bucket.length)];
+  }
+
+  // ── Shuffle array (Fisher-Yates) ──────────────────────────────
+  function shuffle(arr) {
+    const a = [...arr];
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+  }
+
+  // ── Show next question ─────────────────────────────────────────
+  function showNextQuestion() {
+    const q = selectQuestion();
+    if (!q) {
+      showEmptyState();
+      return;
+    }
+    currentQuestion = q;
+
+    // Build shuffled choices with original index tracking
+    const choiceLetters = ['A', 'B', 'C', 'D'];
+    const originalChoices = q.choices || q.options || [];
+    const indexed = originalChoices.map((text, i) => ({ text, origIdx: i }));
+    const shuffled = shuffle(indexed);
+
+    const correctOrigIdx = typeof q.answer === 'number' ? q.answer : parseInt(q.answer, 10);
+
+    // Build card HTML
+    const card = document.createElement('div');
+    card.className = 'system-card';
+
+    const rankColor = RANK_COLORS[q.rank] || RANK_COLORS['E'];
+
+    card.innerHTML = `
+      <div class="card-header">
+        <span class="tag">[SYSTEM] Quest Notification</span>
+        <span class="rank-tag" style="color:${rankColor}; border-color:${rankColor}">${q.rank}-Rank</span>
+      </div>
+      <div class="card-body">
+        <div class="question-text">${escapeHtml(q.question)}</div>
+        <div class="choices">
+          ${shuffled.map((c, i) => `
+            <button class="choice-btn" data-orig="${c.origIdx}">
+              <span class="choice-label">${choiceLetters[i]}</span>
+              <span>${escapeHtml(c.text)}</span>
+            </button>
+          `).join('')}
+        </div>
+      </div>
+    `;
+
+    $scroll.appendChild(card);
+
+    // Scroll to card
+    requestAnimationFrame(() => {
+      card.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    });
+
+    // Attach click handlers
+    const buttons = card.querySelectorAll('.choice-btn');
+    buttons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        handleAnswer(btn, buttons, parseInt(btn.dataset.orig, 10), correctOrigIdx, q, card);
+      });
+    });
+  }
+
+  // ── Handle answer ──────────────────────────────────────────────
+  function handleAnswer(clickedBtn, allBtns, selectedIdx, correctIdx, question, card) {
+    const isCorrect = selectedIdx === correctIdx;
+
+    // Disable all buttons
+    allBtns.forEach(b => b.disabled = true);
+
+    // Mark correct & wrong
+    allBtns.forEach(b => {
+      const orig = parseInt(b.dataset.orig, 10);
+      if (orig === correctIdx) b.classList.add('correct');
+    });
+    if (!isCorrect) {
+      clickedBtn.classList.add('wrong');
+    }
+
+    // Update state
+    state.answeredIds.push(question.id);
+    state.totalAnswered++;
+
+    if (isCorrect) {
+      state.correctCount++;
+      state.streak++;
+      if (state.streak > state.bestStreak) state.bestStreak = state.streak;
+
+      // XP calculation with streak bonus
+      const baseXP = RANK_XP[question.rank] || 10;
+      const streakMultiplier = Math.min(1 + (state.streak - 1) * 0.1, 2.0);
+      const xpGained = Math.round(baseXP * streakMultiplier);
+      addXP(xpGained);
+      showToast(`+${xpGained} XP${state.streak > 1 ? ' (x' + streakMultiplier.toFixed(1) + ' streak)' : ''}`, 'xp-toast');
+    } else {
+      state.streak = 0;
+    }
+
+    // Update week progress based on current rank
+    const rankIdx = RANKS.indexOf(state.rank);
+    for (let w = 0; w < WEEK_RANKS.length; w++) {
+      if (WEEK_RANKS[w] === state.rank) {
+        state.weekProgress[w] = true;
+      }
+    }
+
+    saveState();
+    renderSidebar();
+    renderJourney();
+
+    // Show explanation
+    const explanation = question.explanation || question.rationale || '';
+    if (explanation) {
+      const expDiv = document.createElement('div');
+      expDiv.className = 'explanation';
+      expDiv.innerHTML = `<div class="exp-label">Analysis</div>${escapeHtml(explanation)}`;
+      card.querySelector('.card-body').appendChild(expDiv);
+    }
+
+    // Add "Next Quest" button
+    const nextBtn = document.createElement('button');
+    nextBtn.className = 'next-quest-btn';
+    nextBtn.textContent = 'Next Quest';
+    nextBtn.addEventListener('click', () => {
+      nextBtn.remove();
+      showNextQuestion();
+    });
+    card.querySelector('.card-body').appendChild(nextBtn);
+
+    // Scroll to show explanation and button
+    requestAnimationFrame(() => {
+      card.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    });
+  }
+
+  // ── XP & Level-up logic ────────────────────────────────────────
+  function addXP(amount) {
+    state.xp += amount;
+
+    while (state.xp >= XP_PER_LEVEL) {
+      state.xp -= XP_PER_LEVEL;
+      state.level++;
+
+      if (state.level > LEVELS_PER_RANK) {
+        // Rank up!
+        const currentIdx = RANKS.indexOf(state.rank);
+        if (currentIdx < RANKS.length - 1) {
+          const newRank = RANKS[currentIdx + 1];
+          state.rank = newRank;
+          state.level = 1;
+          saveState();
+          renderSidebar();
+          showRankUpAnimation(newRank);
+          return; // Don't process more XP during rank-up
+        } else {
+          // Already max rank
+          state.level = LEVELS_PER_RANK;
+          state.xp = XP_PER_LEVEL;
+        }
+      } else {
+        showToast(`Level Up! Now Level ${state.level}`, 'level-toast');
+      }
+    }
+
+    saveState();
+    renderSidebar();
+  }
+
+  // ── Render sidebar ─────────────────────────────────────────────
+  function renderSidebar() {
+    // Rank badge
+    $rankBadge.textContent = state.rank;
+    $rankBadge.className = 'rank-badge rank-' + state.rank;
+    $rankTitle.textContent = state.rank + '-Rank Hunter';
+    $rankTitle.style.color = RANK_COLORS[state.rank];
+
+    // XP bar
+    const pct = Math.min((state.xp / XP_PER_LEVEL) * 100, 100);
+    $xpFill.style.width = pct + '%';
+    $levelText.textContent = 'Level ' + state.level;
+    $xpText.textContent = state.xp + ' / ' + XP_PER_LEVEL + ' XP';
+
+    // Stats
+    $statAns.textContent = state.totalAnswered;
+    const acc = state.totalAnswered > 0 ? Math.round((state.correctCount / state.totalAnswered) * 100) : 0;
+    $statAcc.textContent = acc + '%';
+    $statStreak.textContent = state.streak;
+    $statBest.textContent = state.bestStreak;
+  }
+
+  // ── Render journey map ─────────────────────────────────────────
+  function renderJourney() {
+    $journeyMap.innerHTML = '';
+    const currentIdx = RANKS.indexOf(state.rank);
+
+    for (let w = 0; w < 8; w++) {
+      const node = document.createElement('div');
+      node.className = 'week-node';
+      const weekRank = WEEK_RANKS[w];
+      const weekRankIdx = RANKS.indexOf(weekRank);
+
+      if (state.weekProgress[w]) {
+        node.classList.add('completed');
+      }
+      if (weekRank === state.rank && !state.weekProgress[w]) {
+        node.classList.add('active');
+      }
+      // Mark as active if it's the current week we're working on
+      if (weekRankIdx === currentIdx && !node.classList.contains('completed')) {
+        node.classList.add('active');
+      }
+
+      node.innerHTML = `
+        <span class="week-num">W${w + 1}</span>
+        <span class="week-rank" style="color: ${state.weekProgress[w] || node.classList.contains('active') ? RANK_COLORS[weekRank] : ''}">${weekRank}</span>
+      `;
+      $journeyMap.appendChild(node);
+    }
+  }
+
+  // ── Rank-Up Animation ──────────────────────────────────────────
+  function showRankUpAnimation(newRank) {
+    const color = RANK_COLORS[newRank];
+
+    // Badge
+    $rankupBadge.textContent = newRank;
+    $rankupBadge.style.color = color;
+    $rankupBadge.style.borderColor = color;
+    $rankupBadge.querySelector('::after') // styled via CSS
+
+    // Subtitle
+    $rankupSub.textContent = 'You have been promoted to ' + newRank + '-Rank Hunter';
+
+    // Title glow color
+    const $title = document.getElementById('rankupTitle');
+    $title.style.color = color;
+
+    // Particles
+    $rankupPart.innerHTML = '';
+    for (let i = 0; i < 60; i++) {
+      const p = document.createElement('div');
+      p.className = 'particle';
+      p.style.left = Math.random() * 100 + '%';
+      p.style.top = Math.random() * 100 + '%';
+      p.style.setProperty('--tx', (Math.random() - 0.5) * -200 + 'px');
+      p.style.setProperty('--ty', (Math.random() - 0.5) * -200 + 'px');
+      p.style.animationDuration = (1.5 + Math.random() * 2) + 's';
+      p.style.animationDelay = (Math.random() * 0.8) + 's';
+      p.style.background = color;
+      p.style.width = (1 + Math.random() * 3) + 'px';
+      p.style.height = p.style.width;
+      $rankupPart.appendChild(p);
+    }
+
+    // Converging lines
+    $rankupLines.innerHTML = '';
+    for (let i = 0; i < 12; i++) {
+      const line = document.createElement('div');
+      line.className = 'converge-line';
+      const angle = (i / 12) * 360;
+      const rad = angle * (Math.PI / 180);
+      const dist = 600;
+      const x = 50 + Math.cos(rad) * 50;
+      const y = 50 + Math.sin(rad) * 50;
+      line.style.left = x + '%';
+      line.style.top = y + '%';
+      line.style.width = dist + 'px';
+      line.style.transform = `rotate(${angle + 180}deg)`;
+      line.style.transformOrigin = '0 50%';
+      line.style.animationDelay = (i * 0.05) + 's';
+      line.style.background = `linear-gradient(90deg, transparent, ${color}, transparent)`;
+      $rankupLines.appendChild(line);
+    }
+
+    $rankupOv.classList.add('active');
+  }
+
+  // ── Toast notification ─────────────────────────────────────────
+  function showToast(message, className) {
+    const t = document.createElement('div');
+    t.className = 'toast ' + (className || '');
+    t.textContent = message;
+    $toastC.appendChild(t);
+    setTimeout(() => t.remove(), 3200);
+  }
+
+  // ── Empty state ────────────────────────────────────────────────
+  function showEmptyState() {
+    const div = document.createElement('div');
+    div.className = 'system-card';
+    div.innerHTML = `
+      <div class="card-header">
+        <span class="tag">[SYSTEM] Notice</span>
+      </div>
+      <div class="card-body">
+        <div class="question-text">All available quests have been completed. Use the Custom Quests panel to generate new challenges, or reset your progress.</div>
+      </div>
+    `;
+    $scroll.appendChild(div);
+    requestAnimationFrame(() => {
+      div.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    });
+  }
+
+  // ── Helpers ────────────────────────────────────────────────────
+  function escapeHtml(str) {
+    const d = document.createElement('div');
+    d.textContent = str;
+    return d.innerHTML;
+  }
+
+})();
+</script>
+</body>
+</html>
