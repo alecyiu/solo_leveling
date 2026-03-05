@@ -1,5 +1,7 @@
 """Auto-generate ML quiz questions using the claude CLI.
 
+Uses parallel single-question generation with summary-based dedup.
+
 Usage:
     uv run generate_questions.py                        # 10 mixed-rank questions
     uv run generate_questions.py -n 5 -r S -f "transformers"
@@ -10,10 +12,10 @@ import json
 import re
 import subprocess
 import sys
-from pathlib import Path
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
-RESOURCES_DIR = Path(__file__).parent / "resources"
-QUESTIONS_FILE = RESOURCES_DIR / "questions.json"
+import db
+from models import Question
 
 RANK_PREFIXES = {
     "E": "e",
@@ -23,6 +25,19 @@ RANK_PREFIXES = {
     "A": "a",
     "S": "s",
 }
+
+RANK_ORDER = ["E", "D", "C", "B", "A", "S"]
+
+QUESTION_ANGLES = [
+    "conceptual — test understanding of what a concept means and why it matters",
+    "computational — require working through a formula, calculation, or numeric reasoning",
+    "misconception — present a common mistake or trap and ask the student to identify the error",
+    "comparison — compare or contrast two related techniques",
+    "application — describe a real-world scenario and ask which method to apply",
+    "edge-case — focus on boundary conditions, failure modes, or unusual inputs",
+    "intuition — test geometric or visual intuition behind an algorithm",
+    "debugging — present a broken ML pipeline or result and ask what went wrong",
+]
 
 RANK_DESCRIPTIONS = {
     "E": "E-Rank: ML fundamentals (bias/variance, overfitting, linear models, metrics)",
@@ -38,8 +53,8 @@ QUESTION_SCHEMA = """\
   "id": "string — rank-prefixed unique ID, e.g. e001, b003, s012",
   "rank": "string — one of E, D, C, B, A, S",
   "question": "string — the question text",
-  "choices": ["string", "string", "string"],   // exactly 3 choices
-  "correct": 0,                                // index into choices, 0-2
+  "choices": ["choice text without letter prefix", "choice text", "choice text"],
+  "correct": 0,
   "explanation": {
     "correct": "string — why the correct answer is right",
     "wrong": [
@@ -49,75 +64,32 @@ QUESTION_SCHEMA = """\
   }
 }"""
 
-EXAMPLE_QUESTIONS = [
-    {
-        "id": "e001",
-        "rank": "E",
-        "question": "What does a high bias in a model typically indicate?",
-        "choices": [
-            "The model is too simple and underfits the data",
-            "The model is too complex and overfits the data",
-            "The model has perfect generalization",
-        ],
-        "correct": 0,
-        "explanation": {
-            "correct": "High bias means the model makes strong assumptions about the data, leading to underfitting — it cannot capture the underlying patterns.",
-            "wrong": [
-                "High complexity and overfitting are symptoms of high variance, not high bias.",
-                "Perfect generalization would mean both low bias and low variance, which is the ideal but rarely achieved state.",
-            ],
-        },
-    },
-    {
-        "id": "b001",
-        "rank": "B",
-        "question": "In the Transformer architecture, what is the purpose of multi-head attention?",
-        "choices": [
-            "To allow the model to attend to information from different representation subspaces at different positions",
-            "To reduce the computational cost of attention by splitting the input into smaller chunks",
-            "To prevent the model from attending to future tokens during training",
-        ],
-        "correct": 0,
-        "explanation": {
-            "correct": "Multi-head attention runs several attention functions in parallel, each learning different relationships, then concatenates and projects the results.",
-            "wrong": [
-                "While the per-head dimension is smaller, multi-head attention does not primarily aim to reduce cost — it enriches representational capacity.",
-                "Preventing attention to future tokens is the role of causal (masked) attention, not multi-head attention itself.",
-            ],
-        },
-    },
-]
 
+def _distribute_ranks(rank: str | None, count: int) -> list[str]:
+    """Distribute ranks across a batch of questions.
 
-def _load_existing_questions() -> list[dict]:
-    """Load existing questions from disk, returning an empty list if the file
-    does not exist or is empty."""
-    if not QUESTIONS_FILE.exists():
-        return []
-    try:
-        with open(QUESTIONS_FILE) as f:
-            data = json.load(f)
-        if isinstance(data, list):
-            return data
-        return []
-    except (json.JSONDecodeError, OSError):
-        return []
+    - rank=None: round-robin across all 6 ranks.
+    - rank specified: ~20% at current rank, ~40% at +1, ~40% at +2 (clamped to S).
+    """
+    if rank is None:
+        return [RANK_ORDER[i % len(RANK_ORDER)] for i in range(count)]
 
+    idx = RANK_ORDER.index(rank)
+    r0 = rank
+    r1 = RANK_ORDER[min(idx + 1, len(RANK_ORDER) - 1)]
+    r2 = RANK_ORDER[min(idx + 2, len(RANK_ORDER) - 1)]
 
-def _save_questions(questions: list[dict]) -> None:
-    """Persist the full question list to disk."""
-    RESOURCES_DIR.mkdir(parents=True, exist_ok=True)
-    with open(QUESTIONS_FILE, "w") as f:
-        json.dump(questions, f, indent=2)
-        f.write("\n")
+    # Build distribution: 20% current, 40% +1, 40% +2
+    n_r0 = max(1, round(count * 0.2))
+    remaining = count - n_r0
+    n_r1 = remaining // 2
+    n_r2 = remaining - n_r1
 
-
-def _existing_ids(questions: list[dict]) -> set[str]:
-    return {q["id"] for q in questions}
+    result = [r0] * n_r0 + [r1] * n_r1 + [r2] * n_r2
+    return result[:count]
 
 
 def _next_id(prefix: str, existing: set[str]) -> str:
-    """Return the next available ID for a given rank prefix, e.g. 'e003'."""
     num = 1
     while True:
         candidate = f"{prefix}{num:03d}"
@@ -126,183 +98,182 @@ def _next_id(prefix: str, existing: set[str]) -> str:
         num += 1
 
 
-def _build_prompt(
-    count: int,
-    existing_questions: list[dict],
+def _build_single_prompt(
+    summary: dict,
     rank: str | None = None,
     focus_area: str | None = None,
+    question_index: int = 0,
+    total_count: int = 1,
 ) -> str:
     rank_block = "\n".join(f"  - {v}" for v in RANK_DESCRIPTIONS.values())
-
-    example_json = json.dumps(EXAMPLE_QUESTIONS, indent=2)
-
-    # Collect existing question texts so the model can avoid duplicates.
-    existing_texts = [q["question"] for q in existing_questions]
-    dedup_block = ""
-    if existing_texts:
-        dedup_block = (
-            "\n\n--- EXISTING QUESTIONS (do NOT duplicate these) ---\n"
-            + "\n".join(f"- {t}" for t in existing_texts)
-            + "\n--- END EXISTING QUESTIONS ---"
-        )
 
     rank_instruction = ""
     if rank:
         rank_instruction = (
-            f"\nGenerate ALL questions at rank {rank} "
+            f"\nGenerate the question at rank {rank} "
             f"({RANK_DESCRIPTIONS.get(rank, rank)})."
         )
 
     focus_instruction = ""
     if focus_area:
-        focus_instruction = (
-            f"\nFocus the questions on the topic area: {focus_area}."
-        )
+        focus_instruction = f"\nFocus on the topic area: {focus_area}."
 
-    prompt = f"""\
+    # Compact dedup info instead of full question texts
+    dedup_block = ""
+    if summary.get("rank_counts") or summary.get("categories"):
+        dedup_block = "\n\n--- EXISTING QUESTION BANK SUMMARY (avoid duplicating these topics) ---"
+        if summary.get("rank_counts"):
+            counts = ", ".join(f"{r}: {c}" for r, c in sorted(summary["rank_counts"].items()))
+            dedup_block += f"\nExisting question counts by rank: {counts}"
+        if summary.get("categories"):
+            dedup_block += f"\nExisting categories: {', '.join(summary['categories'])}"
+        dedup_block += "\n--- END SUMMARY ---"
+
+    return f"""\
 You are an expert machine learning quiz question generator.
 
-Generate exactly {count} multiple-choice quiz questions for an ML learning app.
-Each question MUST have exactly 3 choices, one correct answer, and detailed explanations.
+Generate exactly 1 multiple-choice quiz question for an ML learning app.
+The question MUST have exactly 3 choices, one correct answer, and detailed explanations.
+
+IMPORTANT: Do NOT include letter prefixes like "A) ", "B) ", "C) " in the choice text.
+Just provide the plain choice text.
 
 RANK SYSTEM (difficulty tiers):
 {rank_block}
 {rank_instruction}{focus_instruction}
 
-If no specific rank is requested, distribute questions across multiple ranks.
+If no specific rank is requested, pick a rank that provides good coverage.
 
-JSON SCHEMA for each question:
+JSON SCHEMA for the question:
 {QUESTION_SCHEMA}
-
-EXAMPLES:
-{example_json}
 {dedup_block}
 
+VARIATION INSTRUCTIONS:
+- This is question {question_index + 1} of {total_count}.
+- Use this question angle: {QUESTION_ANGLES[question_index % len(QUESTION_ANGLES)]}
+- Pick a DIFFERENT subtopic than the obvious choice for this topic.
+
 RULES:
-1. Return ONLY a JSON array of question objects — no commentary, no markdown.
-2. Each question must have exactly 3 choices.
+1. Return ONLY a single JSON object (not an array) — no commentary, no markdown.
+2. The question must have exactly 3 choices.
 3. The "correct" field must be an integer index (0, 1, or 2).
 4. The "explanation.wrong" array must have exactly 2 entries (one per wrong choice).
-5. Do NOT duplicate any existing question listed above.
-6. Make questions challenging and educational, not trivial.
-7. Use the id format "<rank_prefix><3-digit-number>" (e.g. e001, b003, s012).
-   Use placeholder IDs — they will be reassigned to avoid collisions.
+5. Make the question challenging and educational, not trivial.
+6. Use a placeholder ID — it will be reassigned.
+7. Do NOT include letter prefixes (A), B), C)) in choice strings.
+8. Wrap ALL math expressions in LaTeX delimiters: use $...$ for inline math. Use proper LaTeX commands (e.g. $\\nabla_\\theta \\log \\pi(a|s)$, $\\mathbb{{E}}$, $\\sigma$). Never write raw plain-text math.
 
-Return the JSON array now."""
-
-    return prompt
+Return the JSON object now."""
 
 
 def _strip_markdown_fences(text: str) -> str:
-    """Remove markdown code fences (```json ... ``` or ``` ... ```) if present."""
     stripped = text.strip()
-    # Remove opening fence
     stripped = re.sub(r"^```(?:json)?\s*\n?", "", stripped)
-    # Remove closing fence
     stripped = re.sub(r"\n?```\s*$", "", stripped)
     return stripped.strip()
 
 
-def _validate_question(q: dict) -> bool:
-    """Return True if a question object passes all structural checks."""
-    if not isinstance(q, dict):
-        return False
-    required_keys = {"id", "rank", "question", "choices", "correct", "explanation"}
-    if not required_keys.issubset(q.keys()):
-        return False
-    if not isinstance(q["choices"], list) or len(q["choices"]) != 3:
-        return False
-    if q["correct"] not in (0, 1, 2):
-        return False
-    if not isinstance(q["explanation"], dict):
-        return False
-    if "correct" not in q["explanation"] or "wrong" not in q["explanation"]:
-        return False
-    if (
-        not isinstance(q["explanation"]["wrong"], list)
-        or len(q["explanation"]["wrong"]) != 2
-    ):
-        return False
-    if q["rank"] not in RANK_PREFIXES:
-        return False
-    return True
-
-
-def generate_questions(
-    focus_area: str | None = None,
-    rank: str | None = None,
-    count: int = 10,
-) -> list[dict]:
-    """Generate new ML quiz questions via the claude CLI.
-
-    Args:
-        focus_area: Optional topic to focus questions on (e.g. "transformers").
-        rank: Optional single rank letter (E/D/C/B/A/S) to constrain difficulty.
-        count: Number of questions to generate.
-
-    Returns:
-        List of newly generated (and validated) question dicts.
-    """
-    existing = _load_existing_questions()
-    prompt = _build_prompt(count, existing, rank=rank, focus_area=focus_area)
+def _generate_one(
+    summary: dict,
+    rank: str | None,
+    focus_area: str | None,
+    index: int,
+    total_count: int = 1,
+) -> Question | None:
+    """Generate a single question via claude CLI. Returns None on failure."""
+    prompt = _build_single_prompt(
+        summary, rank=rank, focus_area=focus_area,
+        question_index=index, total_count=total_count,
+    )
 
     try:
         result = subprocess.run(
             ["claude", "-p", prompt],
             capture_output=True,
             text=True,
-            timeout=120,
+            timeout=60,
         )
     except FileNotFoundError:
-        print("Error: 'claude' CLI not found. Please install it first.", file=sys.stderr)
-        return []
+        print(f"[{index}] Error: 'claude' CLI not found.", file=sys.stderr)
+        return None
     except subprocess.TimeoutExpired:
-        print("Error: claude CLI timed out after 120 seconds.", file=sys.stderr)
-        return []
+        print(f"[{index}] Error: claude CLI timed out after 60s.", file=sys.stderr)
+        return None
 
     if result.returncode != 0:
-        print(f"Error: claude CLI exited with code {result.returncode}", file=sys.stderr)
-        if result.stderr:
-            print(result.stderr, file=sys.stderr)
-        return []
+        print(f"[{index}] Error: claude CLI exited with code {result.returncode}", file=sys.stderr)
+        return None
 
-    raw_output = result.stdout.strip()
-    if not raw_output:
-        print("Error: claude CLI returned empty output.", file=sys.stderr)
-        return []
+    raw = result.stdout.strip()
+    if not raw:
+        print(f"[{index}] Error: empty output.", file=sys.stderr)
+        return None
 
-    cleaned = _strip_markdown_fences(raw_output)
+    cleaned = _strip_markdown_fences(raw)
 
     try:
-        generated = json.loads(cleaned)
+        data = json.loads(cleaned)
     except json.JSONDecodeError as exc:
-        print(f"Error: Failed to parse JSON from claude output: {exc}", file=sys.stderr)
-        print(f"Raw output (first 500 chars): {raw_output[:500]}", file=sys.stderr)
-        return []
+        print(f"[{index}] Error: bad JSON: {exc}", file=sys.stderr)
+        return None
 
-    if not isinstance(generated, list):
-        print("Error: Expected a JSON array from claude output.", file=sys.stderr)
-        return []
+    # Handle case where model returns an array with one element
+    if isinstance(data, list):
+        if len(data) == 1:
+            data = data[0]
+        else:
+            print(f"[{index}] Error: expected object, got array of {len(data)}", file=sys.stderr)
+            return None
 
-    # Validate and assign unique IDs.
-    used_ids = _existing_ids(existing)
-    valid_questions: list[dict] = []
+    try:
+        return Question.model_validate(data)
+    except Exception as exc:
+        print(f"[{index}] Validation error: {exc}", file=sys.stderr)
+        return None
 
-    for q in generated:
-        if not _validate_question(q):
-            print(f"Warning: Skipping invalid question: {q.get('question', '<no text>')!r}", file=sys.stderr)
+
+def generate_questions(
+    focus_area: str | None = None,
+    rank: str | None = None,
+    count: int = 10,
+) -> list[Question]:
+    """Generate new ML quiz questions via parallel claude CLI calls.
+
+    Returns list of validated, ID-assigned Question objects.
+    """
+    summary = db.get_summary()
+    per_question_ranks = _distribute_ranks(rank, count)
+
+    # Launch parallel generation
+    results: list[Question | None] = [None] * count
+    with ThreadPoolExecutor(max_workers=count) as pool:
+        futures = {
+            pool.submit(_generate_one, summary, per_question_ranks[i], focus_area, i, count): i
+            for i in range(count)
+        }
+        for future in as_completed(futures):
+            idx = futures[future]
+            try:
+                results[idx] = future.result()
+            except Exception as exc:
+                print(f"[{idx}] Unexpected error: {exc}", file=sys.stderr)
+
+    # Assign IDs serially (no race conditions)
+    existing_ids = db.get_existing_ids()
+    valid_questions: list[Question] = []
+
+    for q in results:
+        if q is None:
             continue
-
-        prefix = RANK_PREFIXES[q["rank"]]
-        new_id = _next_id(prefix, used_ids)
-        q["id"] = new_id
-        used_ids.add(new_id)
+        prefix = RANK_PREFIXES[q.rank]
+        new_id = _next_id(prefix, existing_ids)
+        q.id = new_id
+        existing_ids.add(new_id)
         valid_questions.append(q)
 
     if valid_questions:
-        all_questions = existing + valid_questions
-        _save_questions(all_questions)
-        print(f"Successfully generated {len(valid_questions)} question(s) and saved to {QUESTIONS_FILE}.")
+        db.insert_questions(valid_questions)
+        print(f"Successfully generated {len(valid_questions)} question(s).")
     else:
         print("No valid questions were generated.", file=sys.stderr)
 
@@ -313,33 +284,19 @@ def main() -> None:
     parser = argparse.ArgumentParser(
         description="Generate ML quiz questions using the claude CLI."
     )
-    parser.add_argument(
-        "-n",
-        type=int,
-        default=10,
-        help="Number of questions to generate (default: 10)",
-    )
-    parser.add_argument(
-        "-r",
-        type=str,
-        default=None,
-        choices=list(RANK_PREFIXES.keys()),
-        help="Rank/difficulty level (E/D/C/B/A/S). Default: mixed.",
-    )
-    parser.add_argument(
-        "-f",
-        type=str,
-        default=None,
-        help='Focus area / topic (e.g. "transformers", "regularization").',
-    )
+    parser.add_argument("-n", type=int, default=10, help="Number of questions (default: 10)")
+    parser.add_argument("-r", type=str, default=None, choices=list(RANK_PREFIXES.keys()),
+                        help="Rank/difficulty (E/D/C/B/A/S). Default: mixed.")
+    parser.add_argument("-f", type=str, default=None, help="Focus area / topic.")
     args = parser.parse_args()
 
+    db.ensure_ready()
     questions = generate_questions(focus_area=args.f, rank=args.r, count=args.n)
 
     if questions:
         print(f"\nGenerated {len(questions)} question(s):")
         for q in questions:
-            print(f"  [{q['id']}] ({q['rank']}-Rank) {q['question']}")
+            print(f"  [{q.id}] ({q.rank}-Rank) {q.question}")
     else:
         sys.exit(1)
 

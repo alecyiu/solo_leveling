@@ -4,6 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Solo Leveling — ML Hunter Academy</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"></script>
 <style>
 /* ============================================================
    RESET & BASE
@@ -1177,9 +1180,10 @@ body::after {
         })
       });
       const data = await res.json();
+      const newQuestions = data.questions || data;
       const existingIds = new Set(questionPool.map(q => q.id));
       let added = 0;
-      for (const q of data) {
+      for (const q of newQuestions) {
         if (!existingIds.has(q.id)) {
           questionPool.push(q);
           existingIds.add(q.id);
@@ -1252,10 +1256,10 @@ body::after {
     // Build shuffled choices with original index tracking
     const choiceLetters = ['A', 'B', 'C', 'D'];
     const originalChoices = q.choices || q.options || [];
-    const indexed = originalChoices.map((text, i) => ({ text, origIdx: i }));
+    const indexed = originalChoices.map((text, i) => ({ text: text.replace(/^[A-Z]\)\s*/, ''), origIdx: i }));
     const shuffled = shuffle(indexed);
 
-    const correctOrigIdx = typeof q.answer === 'number' ? q.answer : parseInt(q.answer, 10);
+    const correctOrigIdx = typeof q.correct === 'number' ? q.correct : parseInt(q.correct, 10);
 
     // Build card HTML
     const card = document.createElement('div');
@@ -1282,6 +1286,7 @@ body::after {
     `;
 
     $scroll.appendChild(card);
+    renderMath(card);
 
     // Scroll to card
     requestAnimationFrame(() => {
@@ -1349,8 +1354,20 @@ body::after {
     if (explanation) {
       const expDiv = document.createElement('div');
       expDiv.className = 'explanation';
-      expDiv.innerHTML = `<div class="exp-label">Analysis</div>${escapeHtml(explanation)}`;
+      let expHTML = '<div class="exp-label">Analysis</div>';
+      if (typeof explanation === 'object' && explanation.correct) {
+        expHTML += `<p><strong>Correct:</strong> ${escapeHtml(explanation.correct)}</p>`;
+        if (Array.isArray(explanation.wrong)) {
+          explanation.wrong.forEach(w => {
+            expHTML += `<p><strong>Wrong:</strong> ${escapeHtml(w)}</p>`;
+          });
+        }
+      } else {
+        expHTML += escapeHtml(String(explanation));
+      }
+      expDiv.innerHTML = expHTML;
       card.querySelector('.card-body').appendChild(expDiv);
+      renderMath(expDiv);
     }
 
     // Add "Next Quest" button
@@ -1543,6 +1560,18 @@ body::after {
     const d = document.createElement('div');
     d.textContent = str;
     return d.innerHTML;
+  }
+
+  function renderMath(el) {
+    if (typeof renderMathInElement === 'function') {
+      renderMathInElement(el, {
+        delimiters: [
+          { left: '$$', right: '$$', display: true },
+          { left: '$', right: '$', display: false },
+        ],
+        throwOnError: false,
+      });
+    }
   }
 
 })();

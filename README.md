@@ -46,22 +46,17 @@ Requires `claude` CLI to be installed and authenticated.
 
 ## Adding Custom Questions
 
-Add entries to `resources/questions.json`:
+Questions are stored in a SQLite database (`resources/questions.db`). On first run, the seed file `resources/questions.json` is automatically migrated into the DB.
 
-```json
-{
-  "id": "e050",
-  "rank": "E",
-  "week": 1,
-  "category": "Your Category",
-  "question": "Your question text?",
-  "choices": ["A) First choice", "B) Second choice", "C) Third choice"],
-  "correct": 0,
-  "explanation": {
-    "correct": "Why the correct answer is right.",
-    "wrong": ["Why B is wrong.", "Why C is wrong."]
-  }
-}
+To add questions, use the CLI or UI generate feature, or insert directly via the `db` module:
+
+```python
+import db
+from models import Question
+
+q = Question(id="e051", rank="E", question="Your question?", ...)
+db.ensure_ready()
+db.insert_questions([q])
 ```
 
 ## Project Structure
@@ -71,8 +66,11 @@ solo_leveling/
   pyproject.toml            # uv project config
   server.py                 # Flask server with API
   generate_questions.py     # Auto-generate questions via claude CLI
+  models.py                 # Pydantic models (Question, etc.)
+  db.py                     # SQLite access layer
   static/
     index.html              # Frontend (single file)
   resources/
-    questions.json          # Question bank
+    questions.json          # Seed question bank (auto-migrated on first run)
+    questions.db            # SQLite database (generated, git-ignored)
 ```

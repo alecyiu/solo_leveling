@@ -2,7 +2,7 @@
 name = "solo-leveling"
 version = "0.1.0"
 requires-python = ">=3.10"
-dependencies = ["flask>=3.0"]
+dependencies = ["flask>=3.0", "pydantic>=2.0"]
 
 [project.scripts]
 serve = "server:main"

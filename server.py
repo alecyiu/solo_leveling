@@ -1,14 +1,15 @@
 """Flask server for the Solo Leveling ML quiz app."""
 
-import json
 import webbrowser
-from pathlib import Path
 
 from flask import Flask, jsonify, request, send_from_directory
 
+import db
+from models import GenerateRequest, GenerateResponse
+
 app = Flask(__name__, static_folder="static")
 
-RESOURCES_DIR = Path(__file__).parent / "resources"
+RESOURCES_DIR = db.RESOURCES_DIR
 
 
 @app.route("/")
@@ -23,28 +24,34 @@ def serve_resource(filename):
 
 @app.get("/api/questions")
 def get_questions():
-    questions_file = RESOURCES_DIR / "questions.json"
-    with open(questions_file) as f:
-        questions = json.load(f)
-    return jsonify(questions)
+    questions = db.get_all_questions()
+    return jsonify([q.model_dump() for q in questions])
+
+
+@app.get("/api/summary")
+def get_summary():
+    return jsonify(db.get_summary())
 
 
 @app.post("/api/generate")
 def generate():
     data = request.get_json()
-    focus_area = data.get("focus_area", "transformers")
-    rank = data.get("rank", "B")
-    count = data.get("count", 5)
+    try:
+        req = GenerateRequest.model_validate(data)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 400
 
     from generate_questions import generate_questions
 
-    questions = generate_questions(focus_area=focus_area, rank=rank, count=count)
-    return jsonify(questions)
+    questions = generate_questions(focus_area=req.focus_area, rank=req.rank, count=req.count)
+    resp = GenerateResponse(generated=len(questions), questions=questions)
+    return jsonify(resp.model_dump())
 
 
 def main():
+    db.ensure_ready()
     webbrowser.open("http://localhost:8000")
-    app.run(host="localhost", port=8000)
+    app.run(host="localhost", port=8000, threaded=True)
 
 
 if __name__ == "__main__":

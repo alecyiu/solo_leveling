@@ -206,6 +206,14 @@ marimo/_static/
 marimo/_lsp/
 __marimo__/
 
+# SQLite database files
+resources/*.db
+resources/*.db-shm
+resources/*.db-wal
+
+# macOS
+.DS_Store
+
 # Claude Code
 CLAUDE.md
 .claude/
