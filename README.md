@@ -25,16 +25,16 @@ uv run generate_questions.py -f "transformers"   # focused on transformers
 
 Requires `claude` CLI to be installed and authenticated.
 
-## 8-Week Curriculum
+## Curriculum
 
-| Weeks | Rank | Topics |
-|-------|------|--------|
-| 1-2 | E-Rank | ML fundamentals: bias/variance, overfitting, linear models, metrics |
-| 2-3 | D-Rank | Core techniques: regularization, gradient descent, SVMs, trees |
-| 3-4 | C-Rank | Deep learning: CNNs, RNNs/LSTMs, backprop, batch norm, dropout |
-| 5-6 | B-Rank | Advanced: transformers, attention, VAEs, GANs, RL |
-| 6-7 | A-Rank | Expert: optimization theory, information theory, diffusion models |
-| 7-8 | S-Rank | Master: cutting-edge research, adversarial robustness, scaling laws |
+| Rank | Topics |
+|------|--------|
+| E-Rank | ML fundamentals: bias/variance, overfitting, linear models, metrics |
+| D-Rank | Core techniques: regularization, gradient descent, SVMs, trees |
+| C-Rank | Deep learning: CNNs, RNNs/LSTMs, backprop, batch norm, dropout |
+| B-Rank | Advanced: transformers, attention, VAEs, GANs, RL |
+| A-Rank | Expert: optimization theory, information theory, diffusion models |
+| S-Rank | Master: cutting-edge research, adversarial robustness, scaling laws |
 
 ## Game Mechanics
 
