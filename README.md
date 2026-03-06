@@ -1,6 +1,6 @@
 # Solo Leveling: ML Hunter Exam
 
-A self-hosted ML quiz app with a Solo Leveling RPG theme. Study machine learning through an 8-week curriculum disguised as a hunter ranking system.
+A self-hosted ML quiz app with a Solo Leveling RPG theme. Study machine learning disguised as a hunter ranking system.
 
 No API keys needed for the base experience — 50 pre-built questions are included. Generate more using the `claude` CLI.
 
