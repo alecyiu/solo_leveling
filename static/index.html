@@ -431,7 +431,7 @@ body::after {
   font-weight: 600;
 }
 
-/* XP Bar */
+/* Rank Progress Bar */
 .xp-section {
   margin-top: 4px;
 }
@@ -509,49 +509,30 @@ body::after {
 }
 
 /* ============================================================
-   JOURNEY MAP (8-week)
+   ACCURACY CHART
    ============================================================ */
-.journey-map {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 8px;
+.chart-container {
+  position: relative;
+  width: 100%;
+  height: 160px;
 }
 
-.week-node {
+.chart-container canvas {
+  width: 100%;
+  height: 100%;
+}
+
+.chart-placeholder {
   display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: 4px;
-  padding: 10px 4px;
-  background: rgba(10,15,40,0.5);
-  border: 1px solid rgba(65,105,225,0.1);
-  transition: all 0.3s ease;
-}
-
-.week-node.active {
-  border-color: var(--accent);
-  box-shadow: 0 0 10px var(--glow);
-}
-
-.week-node.completed {
-  border-color: var(--correct);
-}
-
-.week-node .week-num {
-  font-size: 9px;
-  letter-spacing: 1px;
+  justify-content: center;
+  height: 160px;
   color: var(--text-dim);
-  text-transform: uppercase;
+  font-size: 12px;
+  letter-spacing: 1px;
+  border: 1px solid rgba(65,105,225,0.1);
+  background: rgba(10,15,40,0.4);
 }
-
-.week-node .week-rank {
-  font-size: 16px;
-  font-weight: 700;
-}
-
-.week-node.completed .week-rank { color: var(--correct); }
-.week-node.active .week-rank { color: var(--accent-light); }
-.week-node:not(.completed):not(.active) .week-rank { color: var(--text-dim); opacity: 0.4; }
 
 /* ============================================================
    FOCUS AREA INPUT
@@ -663,6 +644,12 @@ body::after {
 .toast.level-toast {
   color: var(--accent-light);
   border-color: var(--accent);
+  font-size: 15px;
+}
+
+.toast.demote-toast {
+  color: var(--wrong);
+  border-color: rgba(255,23,68,0.3);
   font-size: 15px;
 }
 
@@ -933,7 +920,7 @@ body::after {
   .stats-grid { grid-template-columns: 1fr 1fr; gap: 6px; }
   .stat-box { padding: 8px; }
   .stat-value { font-size: 18px; }
-  .journey-map { grid-template-columns: repeat(4, 1fr); gap: 4px; }
+  .chart-container { height: 120px; }
 }
 
 /* ============================================================
@@ -973,12 +960,12 @@ body::after {
       </div>
     </div>
 
-    <!-- XP Bar -->
+    <!-- Rank Progress Bar -->
     <div class="status-section xp-section">
-      <div class="status-section-title">Experience</div>
+      <div class="status-section-title">Rank Progress</div>
       <div class="xp-info">
-        <span class="level-text" id="levelText">Level 1</span>
-        <span id="xpText">0 / 100 XP</span>
+        <span class="level-text" id="levelText">Window: 0%</span>
+        <span id="xpText">0 / 0 questions</span>
       </div>
       <div class="xp-bar-track">
         <div class="xp-bar-fill" id="xpBarFill" style="width: 0%"></div>
@@ -1008,10 +995,12 @@ body::after {
       </div>
     </div>
 
-    <!-- Journey Map -->
+    <!-- Accuracy Chart -->
     <div class="status-section">
-      <div class="status-section-title">8-Week Journey</div>
-      <div class="journey-map" id="journeyMap"></div>
+      <div class="status-section-title">Accuracy Trend</div>
+      <div class="chart-container" id="chartContainer">
+        <canvas id="accChart"></canvas>
+      </div>
     </div>
 
     <!-- Focus Area -->
@@ -1055,11 +1044,11 @@ body::after {
   // ── Constants ──────────────────────────────────────────────────
   const RANKS = ['E', 'D', 'C', 'B', 'A', 'S'];
   const RANK_COLORS = { E:'#808080', D:'#4CAF50', C:'#2196F3', B:'#9C27B0', A:'#FF9800', S:'#FF1744' };
-  const RANK_XP     = { E:10, D:20, C:35, B:50, A:75, S:100 };
-  const LEVELS_PER_RANK = 10;
-  const XP_PER_LEVEL = 100;
 
-  const WEEK_RANKS = ['E', 'E', 'D', 'C', 'C', 'B', 'A', 'S'];
+  const WINDOW_SIZE = 20;
+  const PROMOTE_THRESHOLD = 0.80;
+  const DEMOTE_THRESHOLD = 0.40;
+  const MIN_QUESTIONS = 10;
 
   // ── State ──────────────────────────────────────────────────────
   let state = loadState();
@@ -1070,14 +1059,13 @@ body::after {
   function defaultState() {
     return {
       rank: 'E',
-      level: 1,
-      xp: 0,
       streak: 0,
       bestStreak: 0,
       answeredIds: [],
       correctCount: 0,
       totalAnswered: 0,
-      weekProgress: [false, false, false, false, false, false, false, false],
+      history: [],
+      lastRankChangeAt: 0,
       focusAreas: []
     };
   }
@@ -1091,6 +1079,10 @@ body::after {
   }
 
   function saveState() {
+    // Cap history at 2000 entries
+    if (state.history.length > 2000) {
+      state.history = state.history.slice(-2000);
+    }
     localStorage.setItem('soloLevelingML', JSON.stringify(state));
   }
 
@@ -1107,7 +1099,6 @@ body::after {
   const $statAcc      = document.getElementById('statAccuracy');
   const $statStreak   = document.getElementById('statStreak');
   const $statBest     = document.getElementById('statBestStreak');
-  const $journeyMap   = document.getElementById('journeyMap');
   const $focusInput   = document.getElementById('focusInput');
   const $generateBtn  = document.getElementById('generateBtn');
   const $toastC       = document.getElementById('toastContainer');
@@ -1116,10 +1107,12 @@ body::after {
   const $rankupSub    = document.getElementById('rankupSubtitle');
   const $rankupPart   = document.getElementById('rankupParticles');
   const $rankupLines  = document.getElementById('rankupLines');
+  const $chartCanvas  = document.getElementById('accChart');
+  const $chartContainer = document.getElementById('chartContainer');
 
   // ── Init ───────────────────────────────────────────────────────
   renderSidebar();
-  renderJourney();
+  renderChart();
 
   // If user had progress, skip start screen
   if (state.totalAnswered > 0) {
@@ -1205,24 +1198,42 @@ body::after {
     }
   }
 
-  // ── Question selection logic ───────────────────────────────────
+  // ── Question selection logic (adaptive) ─────────────────────────
   function selectQuestion() {
     const currentIdx = RANKS.indexOf(state.rank);
     const unanswered = questionPool.filter(q => !state.answeredIds.includes(q.id));
 
     if (unanswered.length === 0) return null;
 
+    // Compute window accuracy for adaptive weighting
+    const windowEntries = getWindowEntries();
+    const windowAcc = windowEntries.length > 0
+      ? windowEntries.filter(h => h.correct).length / windowEntries.length
+      : 0.5;
+
+    // Adaptive weights based on performance
+    let pCurrent, pHigher, pLower;
+    if (windowEntries.length >= 5 && windowAcc >= 0.70) {
+      // Doing well — shift harder
+      pCurrent = 0.50; pHigher = 0.40; pLower = 0.10;
+    } else if (windowEntries.length >= 5 && windowAcc <= 0.45) {
+      // Struggling — shift easier
+      pCurrent = 0.50; pHigher = 0.10; pLower = 0.40;
+    } else {
+      // Default
+      pCurrent = 0.70; pHigher = 0.20; pLower = 0.10;
+    }
+
     // Bucket by rank relationship
-    const sameBucket  = unanswered.filter(q => q.rank === state.rank);
+    const sameBucket   = unanswered.filter(q => q.rank === state.rank);
     const higherBucket = unanswered.filter(q => RANKS.indexOf(q.rank) === currentIdx + 1);
     const lowerBucket  = unanswered.filter(q => RANKS.indexOf(q.rank) === currentIdx - 1);
 
-    // Weighted random selection: 70% current, 20% higher, 10% lower
     const roll = Math.random();
     let bucket;
-    if (roll < 0.7 && sameBucket.length > 0) {
+    if (roll < pCurrent && sameBucket.length > 0) {
       bucket = sameBucket;
-    } else if (roll < 0.9 && higherBucket.length > 0) {
+    } else if (roll < pCurrent + pHigher && higherBucket.length > 0) {
       bucket = higherBucket;
     } else if (lowerBucket.length > 0) {
       bucket = lowerBucket;
@@ -1326,28 +1337,24 @@ body::after {
       state.correctCount++;
       state.streak++;
       if (state.streak > state.bestStreak) state.bestStreak = state.streak;
-
-      // XP calculation with streak bonus
-      const baseXP = RANK_XP[question.rank] || 10;
-      const streakMultiplier = Math.min(1 + (state.streak - 1) * 0.1, 2.0);
-      const xpGained = Math.round(baseXP * streakMultiplier);
-      addXP(xpGained);
-      showToast(`+${xpGained} XP${state.streak > 1 ? ' (x' + streakMultiplier.toFixed(1) + ' streak)' : ''}`, 'xp-toast');
     } else {
       state.streak = 0;
     }
 
-    // Update week progress based on current rank
-    const rankIdx = RANKS.indexOf(state.rank);
-    for (let w = 0; w < WEEK_RANKS.length; w++) {
-      if (WEEK_RANKS[w] === state.rank) {
-        state.weekProgress[w] = true;
-      }
-    }
+    // Record history
+    state.history.push({
+      qRank: question.rank,
+      correct: isCorrect,
+      rank: state.rank,
+      ts: Date.now()
+    });
+
+    // Evaluate rank based on accuracy
+    evaluateRank();
 
     saveState();
     renderSidebar();
-    renderJourney();
+    renderChart();
 
     // Show explanation
     const explanation = question.explanation || question.rationale || '';
@@ -1386,37 +1393,43 @@ body::after {
     });
   }
 
-  // ── XP & Level-up logic ────────────────────────────────────────
-  function addXP(amount) {
-    state.xp += amount;
+  // ── Get window entries (at or above current rank) ──────────────
+  function getWindowEntries() {
+    const currentIdx = RANKS.indexOf(state.rank);
+    return state.history
+      .filter(h => RANKS.indexOf(h.qRank) >= currentIdx)
+      .slice(-WINDOW_SIZE);
+  }
 
-    while (state.xp >= XP_PER_LEVEL) {
-      state.xp -= XP_PER_LEVEL;
-      state.level++;
+  // ── Evaluate rank based on sliding window accuracy ─────────────
+  function evaluateRank() {
+    const windowEntries = getWindowEntries();
+    if (windowEntries.length < MIN_QUESTIONS) return;
 
-      if (state.level > LEVELS_PER_RANK) {
-        // Rank up!
-        const currentIdx = RANKS.indexOf(state.rank);
-        if (currentIdx < RANKS.length - 1) {
-          const newRank = RANKS[currentIdx + 1];
-          state.rank = newRank;
-          state.level = 1;
-          saveState();
-          renderSidebar();
-          showRankUpAnimation(newRank);
-          return; // Don't process more XP during rank-up
-        } else {
-          // Already max rank
-          state.level = LEVELS_PER_RANK;
-          state.xp = XP_PER_LEVEL;
-        }
-      } else {
-        showToast(`Level Up! Now Level ${state.level}`, 'level-toast');
-      }
+    const sinceLastChange = state.totalAnswered - state.lastRankChangeAt;
+    if (sinceLastChange < MIN_QUESTIONS) return;
+
+    const correctCount = windowEntries.filter(h => h.correct).length;
+    const accuracy = correctCount / windowEntries.length;
+    const currentIdx = RANKS.indexOf(state.rank);
+
+    if (accuracy >= PROMOTE_THRESHOLD && currentIdx < RANKS.length - 1) {
+      // Promote
+      const newRank = RANKS[currentIdx + 1];
+      state.rank = newRank;
+      state.lastRankChangeAt = state.totalAnswered;
+      saveState();
+      renderSidebar();
+      showRankUpAnimation(newRank);
+    } else if (accuracy < DEMOTE_THRESHOLD && currentIdx > 0) {
+      // Demote
+      const newRank = RANKS[currentIdx - 1];
+      state.rank = newRank;
+      state.lastRankChangeAt = state.totalAnswered;
+      saveState();
+      renderSidebar();
+      showToast(`Demoted to ${newRank}-Rank Hunter`, 'demote-toast');
     }
-
-    saveState();
-    renderSidebar();
   }
 
   // ── Render sidebar ─────────────────────────────────────────────
@@ -1427,11 +1440,27 @@ body::after {
     $rankTitle.textContent = state.rank + '-Rank Hunter';
     $rankTitle.style.color = RANK_COLORS[state.rank];
 
-    // XP bar
-    const pct = Math.min((state.xp / XP_PER_LEVEL) * 100, 100);
-    $xpFill.style.width = pct + '%';
-    $levelText.textContent = 'Level ' + state.level;
-    $xpText.textContent = state.xp + ' / ' + XP_PER_LEVEL + ' XP';
+    // Rank progress bar — show window accuracy
+    const windowEntries = getWindowEntries();
+    const windowCount = windowEntries.length;
+    const windowCorrect = windowEntries.filter(h => h.correct).length;
+    const windowAcc = windowCount > 0 ? windowCorrect / windowCount : 0;
+
+    // Bar fill = accuracy as % of promote threshold (capped at 100%)
+    const barPct = Math.min((windowAcc / PROMOTE_THRESHOLD) * 100, 100);
+    $xpFill.style.width = barPct + '%';
+
+    // Bar color tint
+    if (windowAcc >= PROMOTE_THRESHOLD) {
+      $xpFill.style.background = 'linear-gradient(90deg, #00C853, #00E676)';
+    } else if (windowAcc < DEMOTE_THRESHOLD && windowCount >= MIN_QUESTIONS) {
+      $xpFill.style.background = 'linear-gradient(90deg, #D50000, #FF1744)';
+    } else {
+      $xpFill.style.background = 'linear-gradient(90deg, var(--accent), var(--accent-light))';
+    }
+
+    $levelText.textContent = 'Window: ' + Math.round(windowAcc * 100) + '%';
+    $xpText.textContent = windowCount + ' / ' + WINDOW_SIZE + ' questions';
 
     // Stats
     $statAns.textContent = state.totalAnswered;
@@ -1441,33 +1470,147 @@ body::after {
     $statBest.textContent = state.bestStreak;
   }
 
-  // ── Render journey map ─────────────────────────────────────────
-  function renderJourney() {
-    $journeyMap.innerHTML = '';
-    const currentIdx = RANKS.indexOf(state.rank);
+  // ── Accuracy chart (Canvas 2D) ─────────────────────────────────
+  function renderChart() {
+    const canvas = $chartCanvas;
+    const container = $chartContainer;
 
-    for (let w = 0; w < 8; w++) {
-      const node = document.createElement('div');
-      node.className = 'week-node';
-      const weekRank = WEEK_RANKS[w];
-      const weekRankIdx = RANKS.indexOf(weekRank);
+    if (state.history.length < 2) {
+      // Show placeholder
+      canvas.style.display = 'none';
+      if (!container.querySelector('.chart-placeholder')) {
+        const ph = document.createElement('div');
+        ph.className = 'chart-placeholder';
+        ph.textContent = 'Answer 2+ questions to see trends';
+        container.appendChild(ph);
+      }
+      return;
+    }
 
-      if (state.weekProgress[w]) {
-        node.classList.add('completed');
-      }
-      if (weekRank === state.rank && !state.weekProgress[w]) {
-        node.classList.add('active');
-      }
-      // Mark as active if it's the current week we're working on
-      if (weekRankIdx === currentIdx && !node.classList.contains('completed')) {
-        node.classList.add('active');
-      }
+    // Remove placeholder if present
+    const ph = container.querySelector('.chart-placeholder');
+    if (ph) ph.remove();
+    canvas.style.display = 'block';
 
-      node.innerHTML = `
-        <span class="week-num">W${w + 1}</span>
-        <span class="week-rank" style="color: ${state.weekProgress[w] || node.classList.contains('active') ? RANK_COLORS[weekRank] : ''}">${weekRank}</span>
-      `;
-      $journeyMap.appendChild(node);
+    const dpr = window.devicePixelRatio || 1;
+    const rect = container.getBoundingClientRect();
+    const w = rect.width;
+    const h = rect.height;
+    canvas.width = w * dpr;
+    canvas.height = h * dpr;
+    canvas.style.width = w + 'px';
+    canvas.style.height = h + 'px';
+
+    const ctx = canvas.getContext('2d');
+    ctx.scale(dpr, dpr);
+    ctx.clearRect(0, 0, w, h);
+
+    // Compute rolling accuracy (window of 10)
+    const CHART_WINDOW = 10;
+    const history = state.history;
+    const points = [];
+    for (let i = 0; i < history.length; i++) {
+      const start = Math.max(0, i - CHART_WINDOW + 1);
+      const slice = history.slice(start, i + 1);
+      const acc = slice.filter(h => h.correct).length / slice.length;
+      points.push({ acc, rank: history[i].rank });
+    }
+
+    // Chart margins
+    const ml = 32, mr = 12, mt = 12, mb = 20;
+    const cw = w - ml - mr;
+    const ch = h - mt - mb;
+
+    // Y-axis: 0–100%
+    // X-axis: answer index
+    function xPos(i) { return ml + (points.length > 1 ? (i / (points.length - 1)) * cw : cw / 2); }
+    function yPos(acc) { return mt + (1 - acc) * ch; }
+
+    // Background
+    ctx.fillStyle = 'rgba(10,15,40,0.4)';
+    ctx.fillRect(ml, mt, cw, ch);
+
+    // Grid lines at 20% intervals
+    ctx.strokeStyle = 'rgba(65,105,225,0.08)';
+    ctx.lineWidth = 1;
+    for (let pct = 0; pct <= 1; pct += 0.2) {
+      const y = yPos(pct);
+      ctx.beginPath();
+      ctx.moveTo(ml, y);
+      ctx.lineTo(ml + cw, y);
+      ctx.stroke();
+    }
+
+    // Y-axis labels
+    ctx.fillStyle = 'rgba(94,107,128,0.7)';
+    ctx.font = '9px sans-serif';
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'middle';
+    for (let pct = 0; pct <= 1; pct += 0.2) {
+      ctx.fillText(Math.round(pct * 100) + '%', ml - 4, yPos(pct));
+    }
+
+    // Threshold lines
+    // Promote threshold (80%) — green dashed
+    ctx.setLineDash([4, 4]);
+    ctx.strokeStyle = 'rgba(0,230,118,0.5)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(ml, yPos(PROMOTE_THRESHOLD));
+    ctx.lineTo(ml + cw, yPos(PROMOTE_THRESHOLD));
+    ctx.stroke();
+
+    // Demote threshold (40%) — red dashed
+    ctx.strokeStyle = 'rgba(255,23,68,0.5)';
+    ctx.beginPath();
+    ctx.moveTo(ml, yPos(DEMOTE_THRESHOLD));
+    ctx.lineTo(ml + cw, yPos(DEMOTE_THRESHOLD));
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Draw accuracy line, colored by rank
+    if (points.length >= 2) {
+      ctx.lineWidth = 2;
+      for (let i = 1; i < points.length; i++) {
+        const color = RANK_COLORS[points[i].rank] || RANK_COLORS['E'];
+        ctx.strokeStyle = color;
+        ctx.beginPath();
+        ctx.moveTo(xPos(i - 1), yPos(points[i - 1].acc));
+        ctx.lineTo(xPos(i), yPos(points[i].acc));
+        ctx.stroke();
+      }
+    }
+
+    // Dots at rank transitions
+    for (let i = 1; i < points.length; i++) {
+      if (points[i].rank !== points[i - 1].rank) {
+        const color = RANK_COLORS[points[i].rank] || RANK_COLORS['E'];
+        ctx.fillStyle = color;
+        ctx.beginPath();
+        ctx.arc(xPos(i), yPos(points[i].acc), 4, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(255,255,255,0.4)';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+      }
+    }
+
+    // Current point with glow
+    if (points.length > 0) {
+      const last = points.length - 1;
+      const color = RANK_COLORS[points[last].rank] || RANK_COLORS['E'];
+      // Glow
+      ctx.shadowColor = color;
+      ctx.shadowBlur = 8;
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      ctx.arc(xPos(last), yPos(points[last].acc), 4, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.shadowBlur = 0;
+      // White outline
+      ctx.strokeStyle = '#fff';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
     }
   }
 
@@ -1479,7 +1622,6 @@ body::after {
     $rankupBadge.textContent = newRank;
     $rankupBadge.style.color = color;
     $rankupBadge.style.borderColor = color;
-    $rankupBadge.querySelector('::after') // styled via CSS
 
     // Subtitle
     $rankupSub.textContent = 'You have been promoted to ' + newRank + '-Rank Hunter';
